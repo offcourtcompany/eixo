@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────────────────
+   EIXO — sistema visual "Instrumento"
+
+   Direção vinda da referência Factory: sala de guerra de terminal. Fundo
+   obsidiana (#101010), tipografia Geist em peso 400 do começo ao fim, e o
+   peso vem do TAMANHO e do espaçamento negativo — nunca do negrito.
+
+   Três regras que mandam em tudo:
+
+   1. **Cromo é monocromático.** Botão, aba, cartão, borda: só preto, branco
+      e cinza quente. Cor tem um trabalho só, que é dizer estado de dado —
+      laranja de sinal avisa e marca prejuízo, verde de métrica confirma.
+      Nada de cor em fundo de botão.
+   2. **Profundidade é contraste, não sombra.** Não há box-shadow nem blur
+      em lugar nenhum: um cartão claro pousado no preto faz o trabalho que
+      a sombra faria. Cartão escuro é implicado pela borda de 1px, não por
+      preenchimento.
+   3. **Duas vozes, uma família.** Geist carrega o texto; Geist Mono em
+      maiúscula carrega rótulo, etiqueta e unidade. Quando aparece mono,
+      você está olhando para instrumento, não para página.
+
+   Desvios conscientes da referência, porque ela descreve um site e isto é
+   um app de dado denso — todos anotados no README §4.2: rótulo a 11px em
+   vez de 12, respiro de seção de 24px em vez de 96, e uma paleta categórica
+   derivada (tons dos dois acentos) para separar frentes no calendário, que
+   é necessidade funcional e não decoração.
+   ─────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --color-fundo: #101010;        /* obsidiana: a única cor de página */
+  --color-superficie: #101010;   /* cartão escuro = canvas + fio de 1px */
+  --color-superficie2: #1D1A18;  /* carbono: campo, botão escuro, hover */
+  --color-repouso: #1D1A18;
+  --color-borda: #1D1A18;        /* fio do cartão */
+  --color-borda2: #3D3A39;       /* traço de cinza: campo, separador, foco */
+  --color-grafite: #4D4947;
+
+  --color-osso: #EEEEEE;         /* o cartão claro — a figura sobre o fundo */
+  --color-giz: #FAFAFA;
+  --color-creme: #EEEEEE;        /* tinta principal */
+  --color-suave: #B8B3B0;        /* apoio */
+  --color-fraco: #8A8380;        /* granito quente: inativo, legenda */
+
+  --color-brasa: #EEEEEE;        /* ação primária = neutro claro */
+  --color-ouro: #EE6018;         /* sinal: atenção, sequência, ao vivo */
+  --color-perigo: #EE6018;       /* prejuízo e atraso falam no mesmo sinal */
+  --color-verde: #A0CA92;        /* métrica: feito, no ritmo, positivo */
+  --color-azul: #B8B3B0;         /* informação vira neutro: sem terceiro acento */
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Raio da referência: 3px em botão e campo, 10px em cartão. O sistema não
+     é macio — canto redondo demais é a primeira coisa que o descaracteriza. */
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 10px;
+  --radius-2xl: 10px;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-creme);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  /* Sem bounce no iOS: a barra de baixo é fixa e o rebote a descola da tela. */
+  overscroll-behavior-y: none;
+}
+
+/* Título: mesma família do texto, mesmo peso 400. A autoridade vem do
+   tamanho e do espaçamento negativo — encorpar quebraria a voz. */
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+/* Todo número do app passa por aqui: monoespaçado e tabular, para a coluna
+   de valores alinhar mesmo com dígitos de larguras diferentes. */
+.tabular {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* A segunda voz: rótulo de instrumento. Mono, maiúscula, espaçamento
+   apertado. É o que separa superfície de sistema de superfície de página. */
+.rotulo {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* Estes resets moram em @layer base de propósito. Fora de camada eles ganham
+   de TODA utilidade do Tailwind — foi assim que `font: inherit` num <button>
+   engoliu o `font-mono text-[13px]` da marca e devolveu Geist 16px. Dentro da
+   camada base, a utilidade volta a mandar, que é como tem que ser. */
+@layer base {
+  input, select, textarea, button { font: inherit; }
+  /* 16px evita o zoom automático do Safari a cada toque em campo. */
+  input, select, textarea { font-size: 16px; }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { appearance: none; margin: 0; }
+
+  /* O seletor de data nativo vem preto sobre preto no esquema escuro do
+     Chrome; forçar o esquema devolve o ícone visível. */
+  input[type="date"], input[type="time"] { color-scheme: dark; }
+}
+
+:focus-visible { outline: 2px solid var(--color-creme); outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--color-borda2); border-radius: 0; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Movimento mecânico e curto, de ferramenta de linha de comando: cor, fundo
+   e borda mudam juntos, como uma chave sendo virada. Nada de mola nem
+   paralaxe — a superfície tem que parecer parada e precisa. */
+@media (prefers-reduced-motion: no-preference) {
+  .surge { animation: surge .15s cubic-bezier(0.4, 0, 0.2, 1); }
+  @keyframes surge { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+}
