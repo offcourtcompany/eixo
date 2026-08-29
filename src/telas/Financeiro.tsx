@@ -218,17 +218,27 @@ function BlocoDividas({ dados, sobra }: { dados: DadosApp; sobra: number }) {
           <div className="mt-4 space-y-2">
             {ativas.map((d) => (
               <button key={d.id} onClick={() => { setEditando(d); setAberta(true); }}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-borda bg-superficie2 px-3.5 py-3 text-left">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{d.nome}</div>
-                  <div className="text-[11px] text-suave">
-                    {porcento(d.taxaMensal, 2)} a.m. · mínima {moeda(d.parcelaMinima)}
-                  </div>
-                </div>
-                <div className="tabular shrink-0 text-right">
-                  <div className="text-sm">{moeda(d.saldo)}</div>
-                  <div className="text-[11px] text-perigo">+{moedaCurta(d.saldo * d.taxaMensal)}/mês</div>
-                </div>
+                className="block w-full rounded-xl border border-borda bg-superficie2 px-3.5 py-3 text-left">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{d.nome}</span>
+                    <span className="block text-[11px] text-suave">
+                      {porcento(d.taxaMensal, 2)} a.m. · mínima {moeda(d.parcelaMinima)}
+                    </span>
+                  </span>
+                  <span className="tabular shrink-0 text-right">
+                    <span className="block text-sm">{moeda(d.saldo)}</span>
+                    <span className="block text-[11px] text-perigo">+{moedaCurta(d.saldo * d.taxaMensal)}/mês</span>
+                  </span>
+                </span>
+                {/* A descrição fica embaixo e em linha inteira: ela costuma ser
+                    a única coisa acionável do cartão, e espremer ao lado do
+                    saldo a transformaria em detalhe. */}
+                {d.descricao && (
+                  <span className="mt-2 block border-t border-borda pt-2 text-[12px] leading-relaxed text-fraco">
+                    {d.descricao}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -310,6 +320,7 @@ function FormularioDivida({
   const [saldo, setSaldo] = useState('');
   const [taxa, setTaxa] = useState('');
   const [minima, setMinima] = useState('');
+  const [descricao, setDescricao] = useState('');
   const [chave, setChave] = useState('');
 
   // Reidrata os campos quando a folha abre com outra dívida (ou nenhuma).
@@ -320,6 +331,7 @@ function FormularioDivida({
     setSaldo(divida ? String(divida.saldo) : '');
     setTaxa(divida ? String(divida.taxaMensal * 100) : '');
     setMinima(divida ? String(divida.parcelaMinima) : '');
+    setDescricao(divida?.descricao || '');
   }
   if (!aberta && chave) setChave('');
 
@@ -330,6 +342,7 @@ function FormularioDivida({
       saldo: Number(saldo) || 0,
       taxaMensal: (Number(taxa) || 0) / 100,
       parcelaMinima: Number(minima) || 0,
+      descricao: descricao.trim() || undefined,
       ativa: true,
       criadoEm: divida?.criadoEm || new Date().toISOString(),
     });
@@ -355,6 +368,11 @@ function FormularioDivida({
         <Campo rotulo="Parcela mínima" dica="O quanto você precisa pagar todo mês para não entrar em atraso.">
           <Entrada type="number" inputMode="decimal" value={minima}
             onChange={(e) => setMinima(e.target.value)} placeholder="0" />
+        </Campo>
+        <Campo rotulo="O que é esta dívida"
+          dica="Com quem é, de onde veio, o que já foi tentado. Saldo e taxa dizem o tamanho do problema; isto aqui é o que decide o próximo passo — e é o que some entre uma conversa e outra com o banco.">
+          <AreaTexto rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)}
+            placeholder="Rotativo do Itaú, entrou na temporada passada para segurar a estrutura da etapa. Gerente ofereceu parcelar em 12x a 4,9% a.m. em junho; não aceitei na hora." />
         </Campo>
         {Number(taxa) > 0 && (
           <Aviso tom="info">

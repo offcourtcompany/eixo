@@ -70,6 +70,17 @@ export interface Divida {
   saldo: number;
   taxaMensal: number;        // 0.15 = 15% a.m.
   parcelaMinima: number;
+  /**
+   * O que é esta dívida, com as suas palavras.
+   *
+   * Não é campo de enfeite. Saldo e taxa dizem o tamanho do problema; a
+   * descrição diz **o que dá para fazer a respeito** — com quem é, de onde
+   * veio, se já foi renegociada, o que o gerente ofereceu da última vez. Como a
+   * saída de uma dívida a 15% ao mês é troca de contrato e não disciplina, essa
+   * é justamente a informação que decide o próximo passo, e é a que se perde
+   * entre uma conversa e outra.
+   */
+  descricao?: string;
   ativa: boolean;
   criadoEm: string;
 }

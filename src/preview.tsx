@@ -119,8 +119,8 @@ function semear() {
   ];
 
   const dividas: Divida[] = [
-    { id: 'd1', nome: 'Rotativo do cartão', saldo: 13000, taxaMensal: 0.15, parcelaMinima: 400, ativa: true, criadoEm: agora },
-    { id: 'd2', nome: 'Parcelado da loja', saldo: 1800, taxaMensal: 0.035, parcelaMinima: 180, ativa: true, criadoEm: agora },
+    { id: 'd1', nome: 'Rotativo do cartão', saldo: 13000, taxaMensal: 0.15, parcelaMinima: 400, descricao: 'Entrou na temporada passada para segurar a estrutura de duas etapas que venderam abaixo do esperado. O gerente ofereceu parcelar em 12x a 4,9% a.m.; não fechei na hora e a oferta segue de pé.', ativa: true, criadoEm: agora },
+    { id: 'd2', nome: 'Parcelado da loja', saldo: 1800, taxaMensal: 0.035, parcelaMinima: 180, descricao: 'Compra do notebook, 10 parcelas restantes. Sem multa para antecipar.', ativa: true, criadoEm: agora },
   ];
 
   const acoes: AcaoEstrutural[] = ACOES_SUGERIDAS.map((a, i) => ({
