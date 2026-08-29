@@ -26,11 +26,12 @@ import {
 } from './semana';
 import { reagendar, paraRevisar, estadoDoEstudo, abertosDemais } from './estudo';
 import { lerVida, aUnicaCoisa } from './consultor';
+import { resumoDoFunil, taxaReal, pipelineNecessario, motivosDePerda } from './funil';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
-  Meta, Semana as SemanaDoc, Pergunta, Estudo,
+  Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -687,5 +688,74 @@ describe('erros de gravação', () => {
     expect(recebida).toBe('unauthenticated');
     parar();
     limparFalha();
+  });
+});
+
+describe('funil de receita', () => {
+  const o = (over: Partial<Oportunidade> = {}): Oportunidade => ({
+    id: 'o', empresa: 'Marca', etapa: 'proposta', valor: 30000, recorrente: false,
+    proximoPasso: 'Ligar', proximoEm: '2026-09-05',
+    criadoEm: agora, atualizadoEm: agora, ...over,
+  });
+
+  it('pondera o funil pela chance de cada etapa', () => {
+    const r = resumoDoFunil([
+      o({ id: 'a', etapa: 'lista', valor: 10000 }),
+      o({ id: 'b', etapa: 'proposta', valor: 30000 }),
+      o({ id: 'c', etapa: 'negociacao', valor: 20000 }),
+    ], '2026-08-29');
+    expect(r.total).toBe(60000);
+    expect(r.ponderado).toBeCloseTo(10000 * 0.05 + 30000 * 0.5 + 20000 * 0.75, 2);
+  });
+
+  it('parada é a sem próximo passo ou com data vencida', () => {
+    const r = resumoDoFunil([
+      o({ id: 'ok', proximoEm: '2026-09-10' }),
+      o({ id: 'sem-passo', proximoPasso: undefined, proximoEm: undefined }),
+      o({ id: 'vencida', proximoEm: '2026-08-20' }),
+      o({ id: 'fechada', etapa: 'fechado', proximoPasso: undefined, proximoEm: undefined }),
+    ], '2026-08-29');
+    expect(r.paradas.map((x) => x.id).sort()).toEqual(['sem-passo', 'vencida']);
+  });
+
+  it('fechado e perdido saem do que está em andamento', () => {
+    const r = resumoDoFunil([
+      o({ id: 'a', etapa: 'fechado', valor: 12000, recorrente: true }),
+      o({ id: 'b', etapa: 'perdido', valor: 9000 }),
+      o({ id: 'c', etapa: 'contato', valor: 5000 }),
+    ], '2026-08-29');
+    expect(r.quantidade).toBe(1);
+    expect(r.fechado).toBe(12000);
+    expect(r.recorrenteFechado).toBe(12000);
+  });
+
+  it('a taxa real só é confiável depois de dez decididas', () => {
+    const poucas = taxaReal([o({ etapa: 'fechado' }), o({ etapa: 'perdido' })]);
+    expect(poucas.confiavel).toBe(false);
+    expect(poucas.taxa).toBe(0.5);
+
+    const muitas = Array.from({ length: 12 }, (_, i) =>
+      o({ id: 'x' + i, etapa: i < 3 ? 'fechado' : 'perdido' }));
+    const t = taxaReal(muitas);
+    expect(t.confiavel).toBe(true);
+    expect(t.taxa).toBeCloseTo(0.25, 2);
+  });
+
+  it('usa a referência de 20% enquanto a taxa real não é confiável', () => {
+    const p = pipelineNecessario(60000, [o({ etapa: 'contato', valor: 10000 })]);
+    expect(p.usandoReal).toBe(false);
+    expect(p.taxa).toBe(0.2);
+    expect(p.necessario).toBe(300000);
+  });
+
+  it('agrupa os motivos de perda, e conta o que não foi registrado', () => {
+    const m = motivosDePerda([
+      o({ id: '1', etapa: 'perdido', motivoPerda: 'Sem verba' }),
+      o({ id: '2', etapa: 'perdido', motivoPerda: 'Sem verba' }),
+      o({ id: '3', etapa: 'perdido' }),
+      o({ id: '4', etapa: 'fechado' }),
+    ]);
+    expect(m[0]).toEqual(['Sem verba', 2]);
+    expect(m.find(([k]) => k === 'sem motivo registrado')?.[1]).toBe(1);
   });
 });

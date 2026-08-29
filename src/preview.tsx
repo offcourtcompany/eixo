@@ -19,7 +19,7 @@ import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
   Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
-  Estudo as EstudoDoc, Pergunta, Conquista,
+  Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
 import { segundaDa } from './logica/semana';
@@ -33,6 +33,7 @@ import Agenda from './telas/Agenda';
 import Nutricao from './telas/Nutricao';
 import EstudoTela from './telas/Estudo';
 import Consultor from './telas/Consultor';
+import Funil from './telas/Funil';
 import Financeiro from './telas/Financeiro';
 import Habitos from './telas/Habitos';
 import Treino from './telas/Treino';
@@ -145,6 +146,18 @@ function semear() {
     criadoEm: agora,
   }));
 
+  // Um funil com paradas, perdas com motivo e uma temporada fechada: é o
+  // estado que a tela precisa saber ler, não o funil ideal.
+  const oportunidades: Oportunidade[] = [
+    { id: 'op1', empresa: 'Rede de academias', contato: 'Marina', etapa: 'proposta', valor: 30000, recorrente: true, frenteId: 'f1', proximoPasso: 'Levar na arena numa quinta', proximoEm: somaDias(hoje(), 3), dor: 'Não alcançam quem já pratica esporte', criadoEm: agora, atualizadoEm: agora },
+    { id: 'op2', empresa: 'Distribuidora de bebidas', etapa: 'negociacao', valor: 15000, recorrente: false, frenteId: 'f2', proximoPasso: 'Retorno do jurídico', proximoEm: somaDias(hoje(), -2), criadoEm: agora, atualizadoEm: agora },
+    { id: 'op3', empresa: 'Clínica de fisioterapia', etapa: 'contato', valor: 10000, recorrente: true, criadoEm: agora, atualizadoEm: agora },
+    { id: 'op4', empresa: 'Loja de material esportivo', etapa: 'reuniao', valor: 8000, recorrente: false, proximoPasso: 'Enviar proposta', proximoEm: somaDias(hoje(), 5), criadoEm: agora, atualizadoEm: agora },
+    { id: 'op5', empresa: 'Construtora', etapa: 'fechado', valor: 22000, recorrente: true, criadoEm: agora, atualizadoEm: agora },
+    { id: 'op6', empresa: 'Concessionária', etapa: 'perdido', valor: 30000, recorrente: false, motivoPerda: 'Sem verba neste semestre', criadoEm: agora, atualizadoEm: agora },
+    { id: 'op7', empresa: 'Supermercado', etapa: 'perdido', valor: 12000, recorrente: false, motivoPerda: 'Sem verba neste semestre', criadoEm: agora, atualizadoEm: agora },
+  ];
+
   const conquistas: Conquista[] = [
     { id: 'c1', nome: 'Reserva de 3 meses', tipo: 'marco', custo: 9330, guardado: 720, porque: 'Sem colchão, todo evento vira aposta.', status: 'juntando', ordem: 1, criadoEm: agora },
     { id: 'c2', nome: 'Carro melhor', tipo: 'compra', custo: 45000, guardado: 0, custoMensalDepois: 480, porque: 'Ferramenta de trabalho — mas o piso mensal sobe junto.', status: 'sonhando', ordem: 2, criadoEm: agora },
@@ -224,7 +237,7 @@ function semear() {
     { id: 'ta7', titulo: 'Fechar contrato da arena', prazo: somaDias(hoje(), -9), frenteId: 'f0', peso: 'normal', feita: true, feitaEm: agora, criadoEm: agora },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas };
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas, oportunidades };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -250,7 +263,7 @@ function useColecaoFalsa<T extends { id: string }>(inicial: T[]) {
   };
 }
 
-const TELAS = ['hoje', 'consultor', 'agenda', 'dinheiro', 'comida', 'habitos', 'treino', 'metas', 'estudo', 'briefing', 'ajustes'] as const;
+const TELAS = ['hoje', 'consultor', 'agenda', 'dinheiro', 'comida', 'habitos', 'treino', 'metas', 'funil', 'estudo', 'briefing', 'ajustes'] as const;
 type Tela = typeof TELAS[number];
 
 function Bancada() {
@@ -275,6 +288,7 @@ function Bancada() {
   const estudos = useColecaoFalsa<EstudoDoc>(inicial.estudos);
   const perguntas = useColecaoFalsa<Pergunta>(inicial.perguntas);
   const conquistas = useColecaoFalsa<Conquista>(inicial.conquistas);
+  const oportunidades = useColecaoFalsa<Oportunidade>(inicial.oportunidades);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
   const porData = useMemo(() => {
@@ -287,7 +301,7 @@ function Bancada() {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
     frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
-    estudos, perguntas, conquistas,
+    estudos, perguntas, conquistas, oportunidades,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,
@@ -303,6 +317,7 @@ function Bancada() {
     agenda: <Agenda dados={dados} />,
     comida: <Nutricao dados={dados} />,
     estudo: <EstudoTela dados={dados} />,
+    funil: <Funil dados={dados} />,
     consultor: <Consultor dados={dados} irPara={() => setTela('briefing')} />,
     dinheiro: <Financeiro dados={dados} />,
     habitos: <Habitos dados={dados} />,

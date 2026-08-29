@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Sun, Wallet, CalendarDays, CircleCheck, Dumbbell, Target, Settings, LogOut, Apple, GraduationCap,
-  Stethoscope,
+  Stethoscope, Filter,
 } from 'lucide-react';
 import { modoLocal } from './firebase';
 import { useDadosApp } from './dadosApp';
@@ -14,6 +14,7 @@ import Agenda from './telas/Agenda';
 import Nutricao from './telas/Nutricao';
 import EstudoTela from './telas/Estudo';
 import Consultor from './telas/Consultor';
+import Funil from './telas/Funil';
 import Financeiro from './telas/Financeiro';
 import Habitos from './telas/Habitos';
 import Treino from './telas/Treino';
@@ -29,10 +30,10 @@ const ABAS = [
   { id: 'nutricao', nome: 'Comida', icone: Apple },
   { id: 'treino', nome: 'Treino', icone: Dumbbell },
   { id: 'metas', nome: 'Metas', icone: Target },
-  { id: 'estudo', nome: 'Estudo', icone: GraduationCap },
+  { id: 'funil', nome: 'Funil', icone: Filter },
 ] as const;
 
-type Aba = typeof ABAS[number]['id'] | 'ajustes' | 'briefing' | 'consultor';
+type Aba = typeof ABAS[number]['id'] | 'ajustes' | 'briefing' | 'consultor' | 'estudo';
 
 export default function AppAutenticado({ uid, email }: { uid: string; email: string }) {
   const dados = useDadosApp(uid);
@@ -68,6 +69,7 @@ export default function AppAutenticado({ uid, email }: { uid: string; email: str
     treino: <Treino dados={dados} />,
     metas: <Metas dados={dados} />,
     estudo: <EstudoTela dados={dados} />,
+    funil: <Funil dados={dados} />,
     ajustes: <Ajustes dados={dados} email={email} />,
     briefing: <Briefing dados={dados} />,
     consultor: <Consultor dados={dados} irPara={setAba} />,
@@ -94,6 +96,10 @@ export default function AppAutenticado({ uid, email }: { uid: string; email: str
             )}
           </div>
           <div className="flex items-center gap-1">
+            <button onClick={() => setAba('estudo')} title="Estudo"
+              className={`rounded-lg p-2 transition hover:bg-superficie2 ${aba === 'estudo' ? 'text-brasa' : 'text-suave hover:text-creme'}`}>
+              <GraduationCap size={18} />
+            </button>
             <button onClick={() => setAba('consultor')} title="Consultor"
               className={`rounded-lg p-2 transition hover:bg-superficie2 ${aba === 'consultor' || aba === 'briefing' ? 'text-brasa' : 'text-suave hover:text-creme'}`}>
               <Stethoscope size={18} />

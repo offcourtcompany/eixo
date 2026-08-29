@@ -11,7 +11,7 @@ gerador de briefing.
 **Agenda e Nutrição (adiantadas do lote 2):** compromissos por frente de
 trabalho, e o plano alimentar com peso, proteína e adesão.
 **Lote 2 completo:** Nutrição · Agenda · Estudo.
-**Do lote 3:** Consultor entregue; faltam Psicólogo e Oportunidades.
+**Do lote 3:** Consultor e Oportunidades (Funil) entregues; falta Psicólogo.
 
 ---
 
@@ -385,6 +385,7 @@ src/
     semana.ts       fechamento semanal e placar das medidas de direção
     estudo.ts       repetição espaçada e estado da estante
     consultor.ts    as regras que leem cada área
+    funil.ts        pipeline ponderado, paradas e quanto prospectar
     alimentos.ts    busca sem acento e conta de porção
     logica.test.ts  os testes da matemática que dá conselho
     dividas.ts      simulação bola de neve × avalanche
@@ -407,7 +408,7 @@ src/
     FecharSemana.tsx  a revisão de dez minutos e o placar de 8 semanas
     Conquistas.tsx    metas de compra, com o custo fixo que vem depois
   telas/            Hoje, Agenda, Financeiro, Nutricao, Habitos, Metas, Treino,
-                    Estudo, Consultor, Briefing, Ajustes
+                    Estudo, Consultor, Funil, Briefing, Ajustes
   preview.tsx       bancada de prévia (desenvolvimento)
 ```
 

@@ -524,3 +524,46 @@ export interface Ideia {
   estudada: boolean;
   criadoEm: string;
 }
+
+// ─────────────────────── Funil de receita ───────────────────────
+
+export type EtapaFunil =
+  | 'lista' | 'contato' | 'reuniao' | 'proposta' | 'negociacao' | 'fechado' | 'perdido';
+
+/**
+ * Uma oportunidade de receita: cota de patrocínio, contrato de gestão, evento
+ * contratado.
+ *
+ * Dois campos aqui carregam o método e não são burocracia.
+ *
+ * `proximoPasso` com `proximoEm` existe porque, em venda grande, o que prevê
+ * fechamento não é entusiasmo — é sair de toda conversa com um avanço marcado.
+ * Oportunidade sem próximo passo não está em andamento: está parada, e o funil
+ * grita isso na tela.
+ *
+ * `dor` guarda o que a empresa disse que precisa resolver, nas palavras dela.
+ * Proposta construída em cima da dor declarada fecha; proposta construída em
+ * cima do que você acha que ela precisa vira comparação de preço.
+ */
+export interface Oportunidade {
+  id: string;
+  empresa: string;
+  contato?: string;
+  telefone?: string;
+  etapa: EtapaFunil;
+  /** Valor em discussão, por edição ou por temporada. */
+  valor: number;
+  /** Temporada inteira em vez de edição única — é o que vira receita previsível. */
+  recorrente: boolean;
+  /** A qual frente pertence: qual torneio, qual arena. */
+  frenteId?: string;
+  proximoPasso?: string;
+  proximoEm?: string;
+  /** O que ela disse que precisa resolver, com as palavras dela. */
+  dor?: string;
+  nota?: string;
+  /** Preenchido ao perder. Funil sem autópsia repete o mesmo erro. */
+  motivoPerda?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
