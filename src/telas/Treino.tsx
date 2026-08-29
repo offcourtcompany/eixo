@@ -10,6 +10,7 @@ import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
   Folha, Vazio, Legenda, Pilula, Aviso,
 } from '../componentes/ui';
+import { BlocoCarga } from '../componentes/Carga';
 
 export default function Treino({ dados }: { dados: DadosApp }) {
   const treinos = dados.treinos.itens;
@@ -64,6 +65,7 @@ export default function Treino({ dados }: { dados: DadosApp }) {
         </div>
       </Cartao>
 
+      <BlocoCarga dados={dados} />
       <PesoCorporal dados={dados} />
       <VolumeSemanal treinos={treinos} />
       <Recordes treinos={treinos} />

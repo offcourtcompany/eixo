@@ -126,6 +126,17 @@ export interface Dia {
   cinturaCm?: number;
   /** Dia de jogo ou torneio: muda a meta de líquido e liga o protocolo. */
   diaDeJogo?: boolean;
+  /**
+   * Minutos de quadra e o esforço percebido de 1 a 10.
+   *
+   * Existem para a quadra entrar na mesma régua da academia. Sem eles, quem
+   * joga seis horas por semana e treina duas vezes acha que está treinando
+   * pouco — e o corpo, que não separa as duas coisas, discorda. Só o
+   * `diaDeJogo` marcado já vale uma sessão estimada; estes dois trocam a
+   * estimativa pelo que aconteceu de verdade.
+   */
+  quadraMin?: number;
+  quadraEsforco?: number;
   nota?: string;
 
   // ── Nutrição

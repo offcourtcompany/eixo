@@ -31,11 +31,15 @@ import {
   projetarCaixa, movimentosPrevistos, gastoVariavel, dividaDiluida, porSemana, ritmoMensal,
 } from './caixa';
 import { analisar, seguirOuCancelar, precoDeEquilibrio, resumoDaTemporada } from './evento';
+import {
+  cargaDoTreino, cargaDaQuadra, quadraEstimada, serieDeCarga, zonaDe, lerCarga, recadoDaCarga,
+} from './carga';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
   Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade, PlanoEvento,
+  Treino as TreinoDoc2,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -997,5 +1001,91 @@ describe('ponto de equilíbrio de evento', () => {
     expect(r.quantidade).toBe(2);
     expect(r.capitalEmRisco).toBe(5000 + 30000);
     expect(r.impossiveis.map((p) => p.nome)).toEqual(['Final']);
+  });
+});
+
+describe('carga total', () => {
+  const HOJE = '2026-08-28';
+  const treino = (data: string, p: Partial<TreinoDoc2> = {}): TreinoDoc2 => ({
+    id: 't' + data, data, programa: 'A', criadoEm: agora,
+    exercicios: [{
+      nome: 'Agachamento', grupo: 'pernas',
+      series: [{ carga: 60, reps: 5 }, { carga: 60, reps: 5 }, { carga: 60, reps: 5 }],
+    }],
+    ...p,
+  });
+
+  it('a academia vira minutos vezes esforço, com o RIR virando RPE', () => {
+    // Sem RIR e sem duração: 3 séries × 3,5 min × RPE 7 = 73,5 → 74.
+    expect(cargaDoTreino(treino(HOJE))).toBe(74);
+    // Com duração e RIR 2 em todas: 60 min × RPE 8.
+    expect(cargaDoTreino(treino(HOJE, {
+      duracaoMin: 60,
+      exercicios: [{ nome: 'Supino', grupo: 'peito', series: [{ carga: 50, reps: 5, rir: 2 }] }],
+    }))).toBe(480);
+  });
+
+  it('a quadra medida ganha da estimada, e o dia de jogo sozinho ainda conta', () => {
+    expect(cargaDaQuadra({ id: HOJE, quadraMin: 120, quadraEsforco: 7 })).toBe(840);
+    expect(cargaDaQuadra({ id: HOJE, diaDeJogo: true })).toBe(540);
+    expect(cargaDaQuadra({ id: HOJE })).toBe(0);
+    expect(quadraEstimada({ id: HOJE, diaDeJogo: true })).toBe(true);
+    expect(quadraEstimada({ id: HOJE, diaDeJogo: true, quadraMin: 60 })).toBe(false);
+  });
+
+  it('a série soma academia e quadra no mesmo dia', () => {
+    const s = serieDeCarga(
+      [treino(HOJE, { duracaoMin: 60, exercicios: [{ nome: 'X', grupo: 'core', series: [{ carga: 1, reps: 1, rir: 3 }] }] })],
+      [{ id: HOJE, quadraMin: 60, quadraEsforco: 5 }],
+      HOJE, 7,
+    );
+    const dia = s[s.length - 1];
+    expect(dia.academia).toBe(420);   // 60 × 7
+    expect(dia.quadra).toBe(300);
+    expect(dia.total).toBe(720);
+    expect(s).toHaveLength(7);
+  });
+
+  it('as faixas são largas de propósito', () => {
+    expect(zonaDe(0.4, 100)).toBe('parado');
+    expect(zonaDe(0.7, 100)).toBe('leve');
+    expect(zonaDe(1.0, 100)).toBe('ok');
+    expect(zonaDe(1.35, 100)).toBe('ok');
+    expect(zonaDe(1.5, 100)).toBe('alta');
+    expect(zonaDe(1.8, 100)).toBe('pico');
+    expect(zonaDe(2, 0)).toBe('parado');   // sem crônica não há razão
+  });
+
+  it('a razão só é confiável com três semanas de registro', () => {
+    const poucos = lerCarga([], [{ id: HOJE, quadraMin: 60, quadraEsforco: 5 }], HOJE);
+    expect(poucos.confiavel).toBe(false);
+
+    const muitos = Array.from({ length: 22 }, (_, i) => ({
+      id: somaDias(HOJE, -i), quadraMin: 60, quadraEsforco: 5,
+    }));
+    const l = lerCarga([], muitos, HOJE);
+    expect(l.confiavel).toBe(true);
+    expect(l.razao).toBeCloseTo(1, 1);
+    expect(l.zona).toBe('ok');
+  });
+
+  it('semana muito acima do mês acende o alerta, e o sono curto endurece o recado', () => {
+    // Três semanas leves e uma semana pesada.
+    const dias = Array.from({ length: 28 }, (_, i) => ({
+      id: somaDias(HOJE, -i),
+      quadraMin: i < 7 ? 150 : 20,
+      quadraEsforco: 8,
+    }));
+    const l = lerCarga([], dias, HOJE);
+    expect(l.zona).toBe('pico');
+
+    expect(recadoDaCarga(l, 7.5).tom).toBe('alerta');
+    expect(recadoDaCarga(l, 5).texto).toContain('lesão');
+  });
+
+  it('sem histórico o recado é de medição, não de conselho', () => {
+    const r = recadoDaCarga(lerCarga([], [], HOJE));
+    expect(r.titulo).toBe('Ainda medindo');
+    expect(r.tom).toBe('info');
   });
 });
