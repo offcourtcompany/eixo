@@ -19,16 +19,20 @@ import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
   Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
+  Estudo as EstudoDoc, Pergunta, Conquista,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
 import { segundaDa } from './logica/semana';
 import {
   HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS, REFEICOES_SUGERIDAS,
 } from './dados/sementes';
+import { ESTUDOS_SUGERIDOS, PERGUNTAS_SUGERIDAS } from './dados/estudos';
 import { trimestreAtual } from './formato';
 import Hoje from './telas/Hoje';
 import Agenda from './telas/Agenda';
 import Nutricao from './telas/Nutricao';
+import EstudoTela from './telas/Estudo';
+import Consultor from './telas/Consultor';
 import Financeiro from './telas/Financeiro';
 import Habitos from './telas/Habitos';
 import Treino from './telas/Treino';
@@ -124,6 +128,28 @@ function semear() {
 
   // Oito semanas de placar, com buracos: é uma linha furada que explica um
   // trimestre, e a tela precisa saber desenhar isso.
+  const estudos: EstudoDoc[] = ESTUDOS_SUGERIDOS.slice(0, 6).map((e, i) => ({
+    ...e, id: 'est' + i, criadoEm: agora,
+    status: i === 0 ? 'lendo' : i === 1 ? 'lido' : 'fila',
+    progresso: i === 0 ? 38 : i === 1 ? 100 : 0,
+  }));
+
+  const perguntas: Pergunta[] = PERGUNTAS_SUGERIDAS.slice(0, 6).map((q, i) => ({
+    id: 'q' + i,
+    estudoId: 'est' + (q.ordemDoEstudo - 1),
+    pergunta: q.pergunta,
+    resposta: q.resposta,
+    proximaEm: somaDias(hoje(), i < 3 ? -1 : 4),
+    intervalo: i < 3 ? 2 : 6,
+    acertos: i, erros: i % 2,
+    criadoEm: agora,
+  }));
+
+  const conquistas: Conquista[] = [
+    { id: 'c1', nome: 'Reserva de 3 meses', tipo: 'marco', custo: 9330, guardado: 720, porque: 'Sem colchão, todo evento vira aposta.', status: 'juntando', ordem: 1, criadoEm: agora },
+    { id: 'c2', nome: 'Carro melhor', tipo: 'compra', custo: 45000, guardado: 0, custoMensalDepois: 480, porque: 'Ferramenta de trabalho — mas o piso mensal sobe junto.', status: 'sonhando', ordem: 2, criadoEm: agora },
+  ];
+
   const semanas: Semana[] = [7, 6, 5, 4, 3, 2, 1, 0].map((atras) => {
     const segunda = segundaDa(somaDias(hoje(), -7 * atras));
     return {
@@ -198,7 +224,7 @@ function semear() {
     { id: 'ta7', titulo: 'Fechar contrato da arena', prazo: somaDias(hoje(), -9), frenteId: 'f0', peso: 'normal', feita: true, feitaEm: agora, criadoEm: agora },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas };
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -224,7 +250,7 @@ function useColecaoFalsa<T extends { id: string }>(inicial: T[]) {
   };
 }
 
-const TELAS = ['hoje', 'agenda', 'dinheiro', 'comida', 'habitos', 'treino', 'metas', 'briefing', 'ajustes'] as const;
+const TELAS = ['hoje', 'consultor', 'agenda', 'dinheiro', 'comida', 'habitos', 'treino', 'metas', 'estudo', 'briefing', 'ajustes'] as const;
 type Tela = typeof TELAS[number];
 
 function Bancada() {
@@ -246,6 +272,9 @@ function Bancada() {
   const refeicoes = useColecaoFalsa<Refeicao>(inicial.refeicoes);
   const alimentos = useColecaoFalsa<AlimentoMeu>([]);
   const semanas = useColecaoFalsa<Semana>(inicial.semanas);
+  const estudos = useColecaoFalsa<EstudoDoc>(inicial.estudos);
+  const perguntas = useColecaoFalsa<Pergunta>(inicial.perguntas);
+  const conquistas = useColecaoFalsa<Conquista>(inicial.conquistas);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
   const porData = useMemo(() => {
@@ -258,6 +287,7 @@ function Bancada() {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
     frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
+    estudos, perguntas, conquistas,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,
@@ -272,6 +302,8 @@ function Bancada() {
     hoje: <Hoje dados={dados} irPara={(d) => setTela(d as Tela)} />,
     agenda: <Agenda dados={dados} />,
     comida: <Nutricao dados={dados} />,
+    estudo: <EstudoTela dados={dados} />,
+    consultor: <Consultor dados={dados} irPara={() => setTela('briefing')} />,
     dinheiro: <Financeiro dados={dados} />,
     habitos: <Habitos dados={dados} />,
     treino: <Treino dados={dados} />,

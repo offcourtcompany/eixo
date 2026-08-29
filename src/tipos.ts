@@ -413,3 +413,88 @@ export interface Semana {
   nota?: string;
   fechadaEm: string;
 }
+
+// ─────────────────────────── Estudo ───────────────────────────
+
+export type TipoFonte = 'livro' | 'curso' | 'artigo' | 'podcast' | 'video';
+export type StatusEstudo = 'fila' | 'lendo' | 'lido' | 'largado';
+
+/**
+ * Uma fonte de estudo — livro, curso, artigo.
+ *
+ * Dois campos aqui não são enfeite e definem se o módulo serve para alguma
+ * coisa. `porque` responde por que ISTO, e não outra coisa: estante sem tese é
+ * lista de compras. E `aplicacao` é o que você vai fazer com o que leu, escrito
+ * antes de terminar — leitura de negócio que não vira ação virou entretenimento
+ * caro.
+ */
+export interface Estudo {
+  id: string;
+  titulo: string;
+  autor?: string;
+  tipo: TipoFonte;
+  /** A trilha: "Gestão esportiva", "Dinheiro", "Vendas e patrocínio"... */
+  trilha: string;
+  /** Por que este material serve ao que você está construindo. */
+  porque: string;
+  eixo: Eixo;
+  status: StatusEstudo;
+  /** 0 a 100. Página, aula, episódio — o que fizer sentido para o tipo. */
+  progresso: number;
+  /** O que você vai fazer com isso, escrito antes de terminar. */
+  aplicacao?: string;
+  nota?: string;
+  ordem: number;
+  criadoEm: string;
+}
+
+/**
+ * Uma pergunta de recuperação.
+ *
+ * Não é prova de múltipla escolha: é **prática de recuperação** — você tenta
+ * lembrar antes de ver a resposta. Reconhecer alternativa dá sensação de saber
+ * sem o saber; puxar da memória é o que fixa.
+ *
+ * O reforço é espaçado: acertou, o intervalo estica; errou, ela volta amanhã.
+ * Rever tudo toda semana é desperdício, e rever só quando lembra é não rever.
+ */
+export interface Pergunta {
+  id: string;
+  estudoId: string;
+  pergunta: string;
+  /** A resposta de referência, para você conferir depois de tentar. */
+  resposta: string;
+  /** Quando ela volta (AAAA-MM-DD). */
+  proximaEm: string;
+  /** Dias até a próxima revisão, depois do último acerto. */
+  intervalo: number;
+  acertos: number;
+  erros: number;
+  criadoEm: string;
+}
+
+// ───────────────────────── Conquistas ─────────────────────────
+
+/**
+ * Uma conquista material: carro, entrada de apartamento, equipamento.
+ *
+ * `custoMensalDepois` é o campo que existe porque quase ninguém faz essa conta:
+ * quase toda conquista **aumenta o custo fixo** depois de comprada — seguro,
+ * IPVA, manutenção, condomínio. Um carro melhor não é só o preço do carro; é um
+ * piso mensal mais alto para sempre. Com receita ainda dependente de evento,
+ * isso é o oposto do objetivo, e a tela diz isso em vez de só comemorar.
+ */
+export interface Conquista {
+  id: string;
+  nome: string;
+  tipo: 'compra' | 'marco';
+  custo: number;
+  guardado: number;
+  prazo?: string;
+  porque?: string;
+  /** Quanto ela ADICIONA ao custo fixo mensal depois de conquistada. */
+  custoMensalDepois?: number;
+  status: 'sonhando' | 'juntando' | 'conquistada' | 'descartada';
+  ordem: number;
+  criadoEm: string;
+}

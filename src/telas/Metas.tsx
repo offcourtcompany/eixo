@@ -4,6 +4,10 @@ import type { DadosApp } from '../dadosApp';
 import type { MedidaDirecao } from '../tipos';
 import { normalizarMedidas } from '../logica/semana';
 import { BlocoPlacarSemanal } from '../componentes/FecharSemana';
+import { BlocoConquistas } from '../componentes/Conquistas';
+import { resumoDoMes } from '../logica/financas';
+import { jurosMensaisDe } from '../logica/dividas';
+import { mesAtual } from '../formato';
 import type { Meta, Eixo, ResultadoChave } from '../tipos';
 import { EIXOS } from '../tipos';
 import { trimestreAtual, diasRestantesDoTrimestre, porcento, numero } from '../formato';
@@ -36,6 +40,10 @@ export default function Metas({ dados }: { dados: DadosApp }) {
     if (!krs.length) return 0;
     return krs.reduce((s, k) => s + progresso(k), 0) / krs.length;
   }, [doTrimestre]);
+
+  // As conquistas precisam do quadro de dinheiro para dizer se juntar agora faz
+  // sentido — e é justamente essa conta que ninguém faz sozinho.
+  const resumoDinheiro = useMemo(() => resumoDoMes(dados.lancamentos.itens, mesAtual()), [dados.lancamentos.itens]);
 
   function abrir(m: Meta | null) { setEditando(m); setAberta(true); }
 
@@ -106,6 +114,13 @@ export default function Metas({ dados }: { dados: DadosApp }) {
       {/* O placar fica depois das metas de propósito: primeiro o que você quer,
           depois a evidência semanal de que está ou não sendo perseguido. */}
       <BlocoPlacarSemanal dados={dados} />
+
+      {/* Conquistas fecham a tela: meta de trimestre diz o que fazer, conquista
+          diz para quê. Sem a segunda, o ano vira sacrifício sem contrapartida. */}
+      <BlocoConquistas dados={dados} sobraMensal={Math.max(0, resumoDinheiro.sobra)}
+        jurosMensais={jurosMensaisDe(dados.dividas.itens.filter((d) => d.ativa))}
+        pisoFixo={dados.perfil.custoFixoMensal ?? resumoDinheiro.saidasFixas}
+        previsivel={resumoDinheiro.previsivel} />
 
       <FormularioMeta aberta={aberta} aoFechar={() => setAberta(false)} meta={editando}
         dados={dados} trimestre={trimestre} />

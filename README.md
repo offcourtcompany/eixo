@@ -10,8 +10,8 @@ própria: ele monta um briefing que você copia e cola numa conversa com o Claud
 gerador de briefing.
 **Agenda e Nutrição (adiantadas do lote 2):** compromissos por frente de
 trabalho, e o plano alimentar com peso, proteína e adesão.
-**Falta do lote 2:** Estudo.
-**Lote 3:** Consultor · Psicólogo · Oportunidades.
+**Lote 2 completo:** Nutrição · Agenda · Estudo.
+**Do lote 3:** Consultor entregue; faltam Psicólogo e Oportunidades.
 
 ---
 
@@ -311,6 +311,43 @@ Detalhes que não são acidente:
 - Com menos de quatro dias registrados na semana, a tela avisa que os números
   descrevem os dias anotados — não a semana.
 
+## 4.3.4 Estudo, consultor e conquistas
+
+**Estudo.** A estante vem curada — treze materiais escolhidos por responderem a
+uma pergunta que já está em aberto: receita que depende de evento, cota que vira
+leilão de preço, negócio que não vale nada sem o dono. Cada item guarda o
+`porque` (estante sem tese é lista de compras) e a `aplicacao`, escrita antes de
+terminar (leitura de negócio que não vira ação é entretenimento caro).
+
+A verificação é **prática de recuperação**, não prova de múltipla escolha:
+reconhecer a alternativa certa numa lista dá a sensação de saber sem o saber. A
+pergunta aparece sozinha, você tenta lembrar, revela e diz como foi. O intervalo
+estica a cada acerto (fator 2,4, teto de 120 dias), encolhe no "quase" e volta
+para um dia no erro — o tempo de revisão vai para o que ainda não está firme.
+Acerto entre 70% e 85% é a faixa boa; acima disso o intervalo está curto demais
+e você está revisando o que já sabe.
+
+**Consultor.** Lê todas as áreas por regra determinística e devolve sinais com
+gravidade, mais **uma única coisa** — porque um consultor que entrega quinze
+recomendações apenas devolveu a lista para você priorizar. A prioridade não é
+genérica: caixa e sono vêm antes porque contaminam todo o resto.
+
+Não é IA, e a tela diz isso. A conversa que discorda e pede contexto continua
+sendo o briefing. Se um dia o app for conversar sozinho com uma IA, isso muda a
+arquitetura e passa a ter custo por mensagem — é decisão a tomar, não detalhe.
+
+Os limiares são **frouxos de propósito**: 70% de adesão alimentar é verde, dois
+treinos por semana contam, 60% de constância em hábitos passa. Sistema que cobra
+perfeição é abandonado por quem erra uma vez, e alerta só existe para o que
+compromete o mês.
+
+**Conquistas.** Meta de trimestre diz o que fazer; conquista diz para quê. Duas
+contas que quase ninguém faz aparecem aqui: enquanto existir dívida em rotativo,
+juntar rende menos do que o juro cobra — e **quase toda conquista aumenta o custo
+fixo depois de comprada**. O campo `custoMensalDepois` mostra o piso novo e diz
+se a receita previsível de hoje o cobre. Carro melhor é piso mensal mais alto
+para sempre.
+
 ## 4.4 Qualidade
 
 ```bash
@@ -346,6 +383,8 @@ src/
     frentes.ts      margem e R$/hora por frente; contratado × próprio
     nutricao.ts     alvos, média móvel de peso e o veredito da semana
     semana.ts       fechamento semanal e placar das medidas de direção
+    estudo.ts       repetição espaçada e estado da estante
+    consultor.ts    as regras que leem cada área
     alimentos.ts    busca sem acento e conta de porção
     logica.test.ts  os testes da matemática que dá conselho
     dividas.ts      simulação bola de neve × avalanche
@@ -355,6 +394,7 @@ src/
     treino.ts       1RM estimado, volume, sugestão de carga
   dados/
     alimentos.ts    ~140 alimentos brasileiros, por 100 g
+    estudos.ts      a estante curada e as perguntas de recuperação
     programas.ts    programa de força A/B
     sementes.ts     sugestões iniciais (só entram se você clicar)
   componentes/
@@ -365,7 +405,9 @@ src/
     Patrimonio.tsx  curva de dívida e reserva ao longo do tempo
     Alimentos.tsx   a consulta "quanto tem nisso?" e os alimentos seus
     FecharSemana.tsx  a revisão de dez minutos e o placar de 8 semanas
-  telas/            Hoje, Agenda, Financeiro, Nutricao, Habitos, Metas, Treino, Briefing, Ajustes
+    Conquistas.tsx    metas de compra, com o custo fixo que vem depois
+  telas/            Hoje, Agenda, Financeiro, Nutricao, Habitos, Metas, Treino,
+                    Estudo, Consultor, Briefing, Ajustes
   preview.tsx       bancada de prévia (desenvolvimento)
 ```
 

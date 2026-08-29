@@ -24,10 +24,12 @@ import {
   segundaDa, normalizarMedidas, medidasDaSemana, resumoDaSemana,
   sequenciaDaMedida, historicoDaMedida,
 } from './semana';
+import { reagendar, paraRevisar, estadoDoEstudo, abertosDemais } from './estudo';
+import { lerVida, aUnicaCoisa } from './consultor';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
-  Meta, Semana as SemanaDoc,
+  Meta, Semana as SemanaDoc, Pergunta, Estudo,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -547,5 +549,107 @@ describe('fechar a semana', () => {
     expect(h).toHaveLength(3);
     expect(h[2]).toEqual({ segunda: '2026-08-31', feito: 4 });
     expect(h[0].feito).toBe(0);
+  });
+});
+
+describe('estudo e revisão espaçada', () => {
+  const p = (over: Partial<Pergunta> = {}): Pergunta => ({
+    id: 'q', estudoId: 'e', pergunta: '?', resposta: '.', proximaEm: '2026-08-29',
+    intervalo: 6, acertos: 2, erros: 0, criadoEm: agora, ...over,
+  });
+
+  it('errar joga a pergunta para amanhã', () => {
+    const r = reagendar(p({ intervalo: 30 }), 'errei', '2026-08-29');
+    expect(r.intervalo).toBe(1);
+    expect(r.proximaEm).toBe('2026-08-30');
+    expect(r.erros).toBe(1);
+  });
+
+  it('acertar estica o intervalo', () => {
+    const r = reagendar(p({ intervalo: 6 }), 'acertei', '2026-08-29');
+    expect(r.intervalo).toBe(14);
+    expect(r.acertos).toBe(3);
+  });
+
+  it('quase encolhe sem zerar', () => {
+    const r = reagendar(p({ intervalo: 10 }), 'quase', '2026-08-29');
+    expect(r.intervalo).toBe(6);
+    expect(r.acertos).toBe(2);
+    expect(r.erros).toBe(0);
+  });
+
+  it('o intervalo tem teto, para nada sumir por um ano', () => {
+    expect(reagendar(p({ intervalo: 200 }), 'acertei').intervalo).toBe(120);
+  });
+
+  it('só entram na fila as vencidas, mais antigas primeiro', () => {
+    const fila = paraRevisar([
+      p({ id: 'a', proximaEm: '2026-08-30' }),
+      p({ id: 'b', proximaEm: '2026-08-20' }),
+      p({ id: 'c', proximaEm: '2026-08-29' }),
+    ], '2026-08-29');
+    expect(fila.map((x) => x.id)).toEqual(['b', 'c']);
+  });
+
+  it('avisa quando há material aberto demais', () => {
+    const e = (id: string, status: Estudo['status']): Estudo => ({
+      id, titulo: id, tipo: 'livro', trilha: 't', porque: '', eixo: 'oficio',
+      status, progresso: 0, ordem: 1, criadoEm: agora,
+    });
+    const tres = estadoDoEstudo([e('1', 'lendo'), e('2', 'lendo'), e('3', 'lendo')], []);
+    expect(abertosDemais(tres)).toBe(true);
+    expect(abertosDemais(estadoDoEstudo([e('1', 'lendo')], []))).toBe(false);
+  });
+});
+
+describe('consultor', () => {
+  const base = {
+    sobraDoMes: 500, previsivel: 3200, pisoFixo: 3110, jurosMensais: 0,
+    aporteDisponivel: 0, lancamentosNoMes: 12, acoesAbertas: 0,
+    proteinaMedia: 160, proteinaPiso: 130, adesaoRefeicoes: 0.85, diasComRefeicao: 10,
+    treinosNaSemana: 3, sonoMedia: 7.5, habitos30d: 0.8, habitosEmRisco: [],
+    afazeresAtrasados: 0, medidasBatidas: 3, medidasTotal: 3,
+    revisoesVencidas: 0, materiaisAbertos: 1, materiaisNaFila: 5,
+  };
+
+  it('com tudo em ordem, não sobra alerta', () => {
+    const s = lerVida(base);
+    expect(s.filter((x) => x.gravidade === 'alerta')).toHaveLength(0);
+    expect(aUnicaCoisa(s)).toBeNull();
+  });
+
+  it('caixa no vermelho vira alerta e assume a prioridade', () => {
+    const s = lerVida({ ...base, sobraDoMes: -1160 });
+    expect(aUnicaCoisa(s)?.id).toBe('caixa-vermelho');
+  });
+
+  it('dívida que não cobre nem o juro ganha de sono curto', () => {
+    const s = lerVida({ ...base, jurosMensais: 2013, aporteDisponivel: 580, sonoMedia: 5 });
+    expect(aUnicaCoisa(s)?.id).toBe('divida');
+    expect(s.find((x) => x.id === 'divida')?.acao).toContain('renegociar');
+  });
+
+  it('sono curto sozinho é o que sobe', () => {
+    const s = lerVida({ ...base, sonoMedia: 5.5 });
+    expect(aUnicaCoisa(s)?.id).toBe('sono');
+    expect(s.find((x) => x.id === 'sono')?.gravidade).toBe('alerta');
+  });
+
+  it('os limiares são frouxos: 70% de adesão e dois treinos passam', () => {
+    const s = lerVida({ ...base, adesaoRefeicoes: 0.72, treinosNaSemana: 2, habitos30d: 0.62 });
+    expect(s.find((x) => x.id === 'comida')?.gravidade).toBe('ok');
+    expect(s.find((x) => x.id === 'treino-ok')?.gravidade).toBe('ok');
+    expect(s.find((x) => x.id === 'habitos')?.gravidade).toBe('ok');
+  });
+
+  it('sem lançamento no mês o consultor diz que está cego, não que está bom', () => {
+    const s = lerVida({ ...base, lancamentosNoMes: 0 });
+    expect(s.find((x) => x.id === 'caixa-sem-dado')?.gravidade).toBe('sem-dado');
+  });
+
+  it('hábito na segunda falta é alerta com ação de piso', () => {
+    const s = lerVida({ ...base, habitosEmRisco: ['Treino de força'] });
+    expect(s.find((x) => x.id === 'habitos-risco')?.gravidade).toBe('alerta');
+    expect(s.find((x) => x.id === 'habitos-risco')?.acao).toContain('piso');
   });
 });
