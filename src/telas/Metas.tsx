@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import type { DadosApp } from '../dadosApp';
+import type { MedidaDirecao } from '../tipos';
+import { normalizarMedidas } from '../logica/semana';
+import { BlocoPlacarSemanal } from '../componentes/FecharSemana';
 import type { Meta, Eixo, ResultadoChave } from '../tipos';
 import { EIXOS } from '../tipos';
 import { trimestreAtual, diasRestantesDoTrimestre, porcento, numero } from '../formato';
@@ -100,6 +103,10 @@ export default function Metas({ dados }: { dados: DadosApp }) {
         </Cartao>
       )}
 
+      {/* O placar fica depois das metas de propósito: primeiro o que você quer,
+          depois a evidência semanal de que está ou não sendo perseguido. */}
+      <BlocoPlacarSemanal dados={dados} />
+
       <FormularioMeta aberta={aberta} aoFechar={() => setAberta(false)} meta={editando}
         dados={dados} trimestre={trimestre} />
     </div>
@@ -162,15 +169,17 @@ function CartaoMeta({
         })}
       </div>
 
-      {meta.medidasDirecao.length > 0 && (
+      {normalizarMedidas(meta.medidasDirecao).length > 0 && (
         <div className="mt-5 border-t border-borda2 pt-4">
           <div className="mb-2 rotulo text-fraco">
             Medidas de direção
           </div>
           <ul className="space-y-1.5">
-            {meta.medidasDirecao.map((m, i) => (
-              <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-suave">
-                <span className="text-fraco">—</span>{m}
+            {normalizarMedidas(meta.medidasDirecao).map((m) => (
+              <li key={m.id} className="flex items-baseline gap-2 text-[13px] leading-relaxed text-suave">
+                <span className="text-fraco">—</span>
+                <span className="min-w-0 flex-1">{m.texto}</span>
+                <span className="tabular shrink-0 text-[12px] text-fraco">{m.alvoSemanal}×/sem</span>
               </li>
             ))}
           </ul>
@@ -206,7 +215,8 @@ function FormularioMeta({
     setPorque(meta?.porque || '');
     setEixo(meta?.eixo || 'dinheiro');
     setKrs(meta?.krs || [novoKr(0)]);
-    setMedidas((meta?.medidasDirecao || []).join('\n'));
+    setMedidas(normalizarMedidas(meta?.medidasDirecao)
+      .map((m) => m.alvoSemanal + 'x ' + m.texto).join('\n'));
   }
   if (!aberta && chave) setChave('');
 
@@ -224,7 +234,17 @@ function FormularioMeta({
       eixo,
       trimestre: meta?.trimestre || trimestre,
       krs: krs.filter((k) => k.nome.trim()),
-      medidasDirecao: medidas.split('\n').map((s) => s.trim()).filter(Boolean),
+      medidasDirecao: medidas.split('\n').map((linha, i) => {
+        // "5x uma ação de receita" → alvo 5. Sem número na frente, alvo 1.
+        const t = linha.trim();
+        if (!t) return null;
+        const casou = t.match(/^(\d+)\s*[x×]\s*(.+)$/i);
+        return {
+          id: 'md' + (i + 1),
+          texto: (casou ? casou[2] : t).trim(),
+          alvoSemanal: casou ? Math.max(1, Number(casou[1])) : 1,
+        };
+      }).filter((m): m is MedidaDirecao => m !== null),
       status: meta?.status || 'ativa',
       criadoEm: meta?.criadoEm || new Date().toISOString(),
     });
@@ -293,7 +313,7 @@ function FormularioMeta({
         </div>
 
         <Campo rotulo="Medidas de direção (uma por linha)"
-          dica="O que você faz toda semana e controla — não o resultado. Ex: 'uma proposta enviada por dia'.">
+          dica="O que você controla e repete na semana — não o resultado. Comece pelo alvo semanal: '5x uma ação de receita recorrente'. Sem número na frente, o alvo vira 1.">
           <AreaTexto rows={3} value={medidas} onChange={(e) => setMedidas(e.target.value)} />
         </Campo>
 

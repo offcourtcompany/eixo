@@ -18,9 +18,10 @@ import './index.css';
 import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
-  Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu,
+  Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
+import { segundaDa } from './logica/semana';
 import {
   HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS, REFEICOES_SUGERIDAS,
 } from './dados/sementes';
@@ -121,6 +122,22 @@ function semear() {
 
   const metas: Meta[] = [{ ...metaModelo(trimestreAtual()), id: 'm1', criadoEm: agora }];
 
+  // Oito semanas de placar, com buracos: é uma linha furada que explica um
+  // trimestre, e a tela precisa saber desenhar isso.
+  const semanas: Semana[] = [7, 6, 5, 4, 3, 2, 1, 0].map((atras) => {
+    const segunda = segundaDa(somaDias(hoje(), -7 * atras));
+    return {
+      id: segunda,
+      medidas: {
+        md1: (atras * 3) % 7,
+        md2: atras % 3 === 0 ? 7 : 5,
+        md3: atras % 2,
+      },
+      nota: atras === 1 ? 'Semana comida pelo torneio. As propostas não saíram.' : undefined,
+      fechadaEm: agora,
+    };
+  });
+
   const treinos: TreinoDoc[] = [0, 2, 4, 7, 9, 11, 14].map((d, i) => ({
     id: 't' + i,
     data: somaDias(hoje(), -d),
@@ -181,7 +198,7 @@ function semear() {
     { id: 'ta7', titulo: 'Fechar contrato da arena', prazo: somaDias(hoje(), -9), frenteId: 'f0', peso: 'normal', feita: true, feitaEm: agora, criadoEm: agora },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes };
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -228,6 +245,7 @@ function Bancada() {
   const marcos = useColecaoFalsa<Marco>(inicial.marcos);
   const refeicoes = useColecaoFalsa<Refeicao>(inicial.refeicoes);
   const alimentos = useColecaoFalsa<AlimentoMeu>([]);
+  const semanas = useColecaoFalsa<Semana>(inicial.semanas);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
   const porData = useMemo(() => {
@@ -239,7 +257,7 @@ function Bancada() {
   const dados = {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
-    frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos,
+    frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,

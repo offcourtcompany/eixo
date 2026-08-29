@@ -9,7 +9,7 @@
 import { useColecao, useDias, usePerfil } from './store';
 import type {
   Lancamento, Divida, AcaoEstrutural, Habito, Meta, Treino, Recorrente,
-  Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu,
+  Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
 } from './tipos';
 
 export function useDadosApp(uid: string) {
@@ -27,12 +27,13 @@ export function useDadosApp(uid: string) {
   const marcos = useColecao<Marco>(uid, 'marcos', 'id', 'asc');
   const refeicoes = useColecao<Refeicao>(uid, 'refeicoes', 'ordem', 'asc');
   const alimentos = useColecao<AlimentoMeu>(uid, 'alimentos', 'nome', 'asc');
+  const semanas = useColecao<Semana>(uid, 'semanas', 'id', 'asc');
   const { dias, porData, salvarDia } = useDias(uid);
   const { perfil, salvarPerfil } = usePerfil(uid);
 
   return {
     uid, lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
-    frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos,
+    frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
     dias, porData, salvarDia, perfil, salvarPerfil,
   };
 }

@@ -138,10 +138,12 @@ export function metaModelo(trimestre: string): Omit<Meta, 'id' | 'criadoEm'> {
       { id: 'kr2', nome: 'Saldo da dívida', unidade: 'R$', inicio: 13000, alvo: 8000, atual: 13000 },
       { id: 'kr3', nome: 'Receita recorrente', unidade: 'R$/mês', inicio: 1750, alvo: 3500, atual: 1750 },
     ],
+    // Cada uma com alvo semanal, porque é contra ele que a semana é fechada.
+    // Medida de direção sem placar é frase motivacional.
     medidasDirecao: [
-      'Uma ação de receita recorrente por dia útil',
-      'Lançar todo dinheiro que entra e sai, todo dia',
-      'Fechar as 4 ações estruturais até o fim do trimestre',
+      { id: 'md1', texto: 'Uma ação de receita recorrente', alvoSemanal: 5 },
+      { id: 'md2', texto: 'Lançar o dinheiro que entrou e saiu', alvoSemanal: 7 },
+      { id: 'md3', texto: 'Empurrar uma ação estrutural', alvoSemanal: 1 },
     ],
     status: 'ativa',
   };

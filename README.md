@@ -275,6 +275,42 @@ desempenho mais importa. O cartão traz o que comer 3 h antes, 1 h antes, a cada
 um, mais a lista do que pôr na mochila **na véspera**. É leitura, não registro:
 cobrar marcação num dia de torneio seria inventar tarefa onde não sobra mão.
 
+## 4.3.3 Fechar a semana
+
+O que costurava os módulos e não existia. Cada tela responde bem à sua própria
+pergunta e nenhuma respondia "como foi a semana".
+
+**O placar é das medidas de direção.** É a ideia central do 4DX e estava pela
+metade: as medidas eram texto exibido, sem contagem nenhuma. Agora cada uma tem
+**alvo semanal** (`MedidaDirecao`), você conta com dois botões durante o
+fechamento, e o histórico de oito semanas fica na tela de Metas — quadrado cheio
+é semana em que o alvo bateu. Resultado você não controla; medida de direção
+você controla, e é ela que move o resultado.
+
+**O app junta os números; a conclusão é sua.** O fechamento mostra sobra da
+semana, hábitos, treinos, adesão às refeições, proteína média, sono e afazeres
+vencidos — tudo do que já estava registrado. Não há veredito: revisão que começa
+pela pergunta vira desabafo, e revisão em que o app decreta se a semana foi boa
+tira de você justamente a parte que a faz valer. Por isso as **três perguntas**
+vêm depois dos números, e a resposta é um campo de texto livre.
+
+**Nada acontece sozinho.** A revisão semanal automática foi recusada de
+propósito lá no começo, e continua recusada. A diferença entre isto e aquilo é
+quem começa: o convite aparece grande no domingo e na segunda, discreto nos
+outros dias, e some quando a semana é fechada.
+
+Detalhes que não são acidente:
+
+- O id da semana é a **segunda-feira** em AAAA-MM-DD; domingo pertence à semana
+  que começou na segunda. Fechar duas vezes corrige em vez de empilhar.
+- `normalizarMedidas()` lê o formato antigo (texto solto) e o novo. O app já
+  estava no ar quando o formato mudou, e uma meta salva antes não pode quebrar
+  a tela.
+- No formulário, o alvo vem na frente do texto: `5x uma ação de receita`. Sem
+  número, o alvo é 1.
+- Com menos de quatro dias registrados na semana, a tela avisa que os números
+  descrevem os dias anotados — não a semana.
+
 ## 4.4 Qualidade
 
 ```bash
@@ -309,6 +345,7 @@ src/
     agenda.ts       dia, grade do mês, atrasados, horas por frente
     frentes.ts      margem e R$/hora por frente; contratado × próprio
     nutricao.ts     alvos, média móvel de peso e o veredito da semana
+    semana.ts       fechamento semanal e placar das medidas de direção
     alimentos.ts    busca sem acento e conta de porção
     logica.test.ts  os testes da matemática que dá conselho
     dividas.ts      simulação bola de neve × avalanche
@@ -327,6 +364,7 @@ src/
     PorFrente.tsx   tabela de rentabilidade e o corte contratado × próprio
     Patrimonio.tsx  curva de dívida e reserva ao longo do tempo
     Alimentos.tsx   a consulta "quanto tem nisso?" e os alimentos seus
+    FecharSemana.tsx  a revisão de dez minutos e o placar de 8 semanas
   telas/            Hoje, Agenda, Financeiro, Nutricao, Habitos, Metas, Treino, Briefing, Ajustes
   preview.tsx       bancada de prévia (desenvolvimento)
 ```

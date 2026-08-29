@@ -15,6 +15,7 @@ import { jurosMensaisDe } from '../logica/dividas';
 import { itensDoDia, separarAfazeres } from '../logica/agenda';
 import { PROGRAMAS } from '../dados/programas';
 import { Cartao, TituloSecao, Botao, Barra, Aviso, Legenda, Metrica, Vazio } from '../componentes/ui';
+import { ConviteDeFechamento } from '../componentes/FecharSemana';
 
 type Destino = 'dinheiro' | 'habitos' | 'treino' | 'metas' | 'briefing' | 'agenda';
 
@@ -221,6 +222,8 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
           </div>
         )}
       </Cartao>
+
+      <ConviteDeFechamento dados={dados} data={data} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <button onClick={() => irPara('dinheiro')}

@@ -20,9 +20,14 @@ import {
   tendenciaCintura, metaDeLiquido, sonoRecente, type Tendencia,
 } from './nutricao';
 import { normalizar, buscar, catalogo, calcular } from './alimentos';
+import {
+  segundaDa, normalizarMedidas, medidasDaSemana, resumoDaSemana,
+  sequenciaDaMedida, historicoDaMedida,
+} from './semana';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
+  Meta, Semana as SemanaDoc,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -454,5 +459,93 @@ describe('cintura, sono e líquido', () => {
     const s = sonoRecente(porData, 5, '2026-08-28');
     expect(s.media).toBe(7);
     expect(s.noites).toBe(2);
+  });
+});
+
+describe('fechar a semana', () => {
+  it('a segunda-feira da semana é o id, e domingo pertence à semana que começou', () => {
+    expect(segundaDa('2026-08-31')).toBe('2026-08-31');   // segunda
+    expect(segundaDa('2026-09-02')).toBe('2026-08-31');   // quarta
+    expect(segundaDa('2026-09-06')).toBe('2026-08-31');   // domingo
+    expect(segundaDa('2026-09-07')).toBe('2026-09-07');   // segunda seguinte
+  });
+
+  it('lê medida antiga em texto e medida nova com alvo', () => {
+    const m = normalizarMedidas(['Ligar para um patrocinador', { id: 'x', texto: 'Treinar', alvoSemanal: 3 }]);
+    expect(m).toEqual([
+      { id: 'md1', texto: 'Ligar para um patrocinador', alvoSemanal: 1 },
+      { id: 'x', texto: 'Treinar', alvoSemanal: 3 },
+    ]);
+  });
+
+  it('descarta medida sem texto', () => {
+    expect(normalizarMedidas(['', '   '])).toHaveLength(0);
+    expect(normalizarMedidas('não é lista')).toHaveLength(0);
+  });
+
+  it('marca quem bateu o alvo da semana', () => {
+    const meta: Meta = {
+      id: 'm1', objetivo: 'Sair do vermelho', porque: '', eixo: 'dinheiro',
+      trimestre: '2026-T3', krs: [], status: 'ativa', criadoEm: agora,
+      medidasDirecao: [
+        { id: 'a', texto: 'Propostas', alvoSemanal: 5 },
+        { id: 'b', texto: 'Lançar dinheiro', alvoSemanal: 7 },
+      ],
+    };
+    const semana: SemanaDoc = {
+      id: '2026-08-31', medidas: { a: 5, b: 3 }, fechadaEm: agora,
+    };
+    const linhas = medidasDaSemana([meta], '2026-T3', semana);
+    expect(linhas.map((l) => l.bateu)).toEqual([true, false]);
+    expect(linhas[1].feito).toBe(3);
+  });
+
+  it('ignora meta de outro trimestre ou arquivada', () => {
+    const base: Meta = {
+      id: 'm', objetivo: '', porque: '', eixo: 'dinheiro', trimestre: '2026-T2',
+      krs: [], medidasDirecao: [{ id: 'a', texto: 'X', alvoSemanal: 1 }],
+      status: 'ativa', criadoEm: agora,
+    };
+    expect(medidasDaSemana([base], '2026-T3')).toHaveLength(0);
+    expect(medidasDaSemana([{ ...base, trimestre: '2026-T3', status: 'arquivada' }], '2026-T3')).toHaveLength(0);
+  });
+
+  it('o resumo só conta o que caiu dentro da semana', () => {
+    const porData = new Map<string, Dia>([
+      ['2026-08-31', { id: '2026-08-31', sonoHoras: 6, proteinaG: 150 }],
+      ['2026-09-01', { id: '2026-09-01', sonoHoras: 8, proteinaG: 130 }],
+    ]);
+    const r = resumoDaSemana('2026-08-31', {
+      lancamentos: [
+        { id: '1', data: '2026-09-02', tipo: 'entrada', valor: 1000, categoria: 'x', criadoEm: agora },
+        { id: '2', data: '2026-09-02', tipo: 'saida', valor: 400, categoria: 'y', criadoEm: agora },
+        { id: '3', data: '2026-09-08', tipo: 'entrada', valor: 9999, categoria: 'fora', criadoEm: agora },
+      ] as Lancamento[],
+      habitos: [],
+      porData,
+      treinos: [{ data: '2026-09-01' }, { data: '2026-09-20' }],
+      tarefas: [{ ...({} as Tarefa), id: 't', titulo: 'atrasada', prazo: '2026-09-03', feita: false, peso: 'normal', criadoEm: agora }],
+      refeicoes: [],
+    });
+    expect(r.entrou).toBe(1000);
+    expect(r.sobra).toBe(600);
+    expect(r.treinos).toBe(1);
+    expect(r.atrasados).toBe(1);
+    expect(r.sonoMedia).toBe(7);
+    expect(r.proteinaMedia).toBe(140);
+    expect(r.diasRegistrados).toBe(2);
+  });
+
+  it('conta semanas seguidas em que a medida bateu', () => {
+    const hist = [{ feito: 5 }, { feito: 2 }, { feito: 5 }, { feito: 6 }];
+    expect(sequenciaDaMedida(hist, 5)).toBe(2);
+    expect(sequenciaDaMedida([{ feito: 1 }], 5)).toBe(0);
+  });
+
+  it('o histórico devolve uma casa por semana, mesmo sem registro', () => {
+    const h = historicoDaMedida('a', [{ id: '2026-08-31', medidas: { a: 4 }, fechadaEm: agora }], '2026-08-31', 3);
+    expect(h).toHaveLength(3);
+    expect(h[2]).toEqual({ segunda: '2026-08-31', feito: 4 });
+    expect(h[0].feito).toBe(0);
   });
 });

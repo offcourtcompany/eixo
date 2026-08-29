@@ -150,6 +150,20 @@ export interface ResultadoChave {
   atual: number;
 }
 
+/**
+ * A medida de direção do 4DX: o que você controla e faz toda semana.
+ *
+ * Ela virou objeto com **alvo semanal** porque medida de direção sem placar é
+ * frase motivacional. O método inteiro depende de contar: "três propostas por
+ * semana" só vira comportamento quando alguém marca quantas saíram.
+ */
+export interface MedidaDirecao {
+  id: string;
+  texto: string;
+  /** Quantas vezes por semana. É contra isto que a semana é fechada. */
+  alvoSemanal: number;
+}
+
 export interface Meta {
   id: string;
   objetivo: string;
@@ -158,7 +172,7 @@ export interface Meta {
   trimestre: string;         // 2026-T3
   krs: ResultadoChave[];
   /** 4DX: o que você controla e faz toda semana, não o resultado. */
-  medidasDirecao: string[];
+  medidasDirecao: MedidaDirecao[];
   status: 'ativa' | 'concluida' | 'arquivada';
   criadoEm: string;
 }
@@ -378,4 +392,24 @@ export interface AlimentoMeu {
   porcaoNome?: string;
   porcaoG?: number;
   criadoEm: string;
+}
+
+/**
+ * O fechamento de uma semana.
+ *
+ * id = a segunda-feira daquela semana, em AAAA-MM-DD. Fechar duas vezes a mesma
+ * semana corrige o registro em vez de empilhar.
+ *
+ * É **manual e iniciado por você** — a revisão semanal automática foi recusada
+ * de propósito, e nada aqui acontece sozinho. O que o app faz é juntar o que já
+ * sabe (dinheiro, hábitos, agenda, comida) para você não precisar caçar número
+ * antes de pensar.
+ */
+export interface Semana {
+  id: string;
+  /** Contagem de cada medida de direção na semana. Chave = id da medida. */
+  medidas: Record<string, number>;
+  /** O que você escreveu. É a única coisa aqui que o app não sabe sozinho. */
+  nota?: string;
+  fechadaEm: string;
 }
