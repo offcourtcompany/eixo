@@ -44,6 +44,7 @@ import { gerarChecklist, prazoDoItem, estadoDoChecklist, riscoDoEvento } from '.
 import { MODELO_TORNEIO } from '../dados/checklistTorneio';
 import { ordenarIdeias, estadoDasIdeias, ideiasDoEstudo, recadoDasIdeias } from './ideias';
 import { IDEIAS_SUGERIDAS } from '../dados/ideias';
+import { BLOCOS, PERGUNTAS_CONTADOR } from '../dados/perguntasContador';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
@@ -1504,5 +1505,30 @@ describe('o imposto na projeção de caixa', () => {
     });
     expect(r.imposto).toBeCloseTo(300, 6);
     expect(r.sobra).toBeCloseTo(5000 - 300 - 2000, 6);
+  });
+});
+
+describe('perguntas para o contador', () => {
+  it('cada pergunta tem id único, bloco conhecido e um porquê que explica', () => {
+    const ids = new Set<string>();
+    for (const q of PERGUNTAS_CONTADOR) {
+      expect(ids.has(q.id)).toBe(false);
+      ids.add(q.id);
+      expect(BLOCOS).toContain(q.bloco);
+      expect(q.pergunta.trim().endsWith('?')).toBe(true);
+      // O porquê é o que permite insistir quando a resposta vier vaga; frase
+      // curta ali seria enfeite.
+      expect(q.porque.trim().length).toBeGreaterThan(80);
+    }
+  });
+
+  it('todo bloco declarado tem pelo menos uma pergunta', () => {
+    for (const b of BLOCOS) {
+      expect(PERGUNTAS_CONTADOR.some((q) => q.bloco === b)).toBe(true);
+    }
+  });
+
+  it('a primeira pergunta é a alíquota — é a única que entra no app', () => {
+    expect(PERGUNTAS_CONTADOR[0].id).toBe('q-aliquota');
   });
 });
