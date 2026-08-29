@@ -22,6 +22,7 @@ import type {
   Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade, PlanoEvento,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
+import { MODELO_TORNEIO } from './dados/checklistTorneio';
 import { segundaDa } from './logica/semana';
 import {
   HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS, REFEICOES_SUGERIDAS,
@@ -253,6 +254,10 @@ function semear() {
         { id: 'x5', nome: 'Kit do atleta', valor: 45, tipo: 'porInscrito' },
       ],
       status: 'confirmado', ordem: 1, criadoEm: agora,
+      checklist: MODELO_TORNEIO.map((m, i) => ({
+        id: m.id, titulo: m.titulo, fase: m.fase, diasAntes: m.diasAntes,
+        detalhe: m.detalhe, feita: i % 3 !== 2,
+      })),
     },
     {
       id: 'pe2', nome: 'Desafio das Arenas — Final', data: somaDias(hoje(), 82), frenteId: 'f1',

@@ -12,11 +12,16 @@
  * vermelho — e é a que ninguém tem porque o número nunca foi calculado.
  */
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Circle, CircleCheck } from 'lucide-react';
 import type { DadosApp } from '../dadosApp';
 import type { PlanoEvento, CustoEvento } from '../tipos';
 import { moeda, moedaCurta, porcento, numero, dataCurta } from '../formato';
 import { analisar, precoDeEquilibrio, resumoDaTemporada, seguirOuCancelar } from '../logica/evento';
+import {
+  gerarChecklist, estadoDoChecklist, riscoDoEvento,
+  type EstadoDoChecklist, type ItemComPrazo,
+} from '../logica/checklist';
+import { MODELO_TORNEIO } from '../dados/checklistTorneio';
 import { EscolhaDeFrente } from './Frentes';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
@@ -79,7 +84,7 @@ export function BlocoEventos({ dados }: { dados: DadosApp }) {
 
           <div className="mt-5 space-y-3">
             {planos.map((p) => (
-              <LinhaDoEvento key={p.id} plano={p}
+              <LinhaDoEvento key={p.id} plano={p} dados={dados}
                 expandido={expandido === p.id}
                 aoExpandir={() => setExpandido(expandido === p.id ? null : p.id)}
                 aoEditar={() => abrir(p)} />
@@ -95,11 +100,15 @@ export function BlocoEventos({ dados }: { dados: DadosApp }) {
 }
 
 function LinhaDoEvento({
-  plano, expandido, aoExpandir, aoEditar,
-}: { plano: PlanoEvento; expandido: boolean; aoExpandir: () => void; aoEditar: () => void }) {
+  plano, dados, expandido, aoExpandir, aoEditar,
+}: {
+  plano: PlanoEvento; dados: DadosApp; expandido: boolean;
+  aoExpandir: () => void; aoEditar: () => void;
+}) {
   const a = useMemo(() => analisar(plano), [plano]);
   const preco = useMemo(() => precoDeEquilibrio(plano), [plano]);
   const decisao = useMemo(() => seguirOuCancelar(plano), [plano]);
+  const lista = useMemo(() => estadoDoChecklist(plano), [plano]);
 
   const pe = a.pontoDeEquilibrio;
   const peTexto = a.margemNegativa ? 'nunca' : pe === 0 ? 'já pago' : numero(pe);
@@ -119,6 +128,11 @@ function LinhaDoEvento({
             {plano.capacidade > 0 && ' · ' + porcento(plano.inscritos / plano.capacidade)}
           </div>
         </div>
+        {lista.atrasados.length > 0 && (
+          <span className="tabular shrink-0 text-[12px] text-perigo">
+            {lista.atrasados.length} atrasado{lista.atrasados.length > 1 ? 's' : ''}
+          </span>
+        )}
         <div className="shrink-0 text-right">
           <div className="rotulo text-fraco">equilíbrio</div>
           <div className={'tabular text-[15px] ' + (a.impossivel ? 'text-perigo' : 'text-creme')}>
@@ -221,10 +235,133 @@ function LinhaDoEvento({
             </Legenda>
           )}
 
+          <Checklist plano={plano} dados={dados} estado={lista} />
+
           <div className="flex justify-end">
             <Botao variante="secundario" onClick={aoEditar}>Editar orçamento</Botao>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A lista operacional.
+ *
+ * Ela abre no que está atrasado e no que vence em dez dias, e só isso — o resto
+ * fica atrás de um toque. Checklist inteiro aberto é a forma mais rápida de
+ * fazer alguém parar de usar checklist: quarenta itens de uma vez não pedem
+ * ação, pedem paciência.
+ */
+function Checklist({
+  plano, dados, estado,
+}: { plano: PlanoEvento; dados: DadosApp; estado: EstadoDoChecklist }) {
+  const [tudo, setTudo] = useState(false);
+  const risco = riscoDoEvento(estado, plano);
+
+  async function marcar(id: string, feita: boolean) {
+    await dados.planos.salvar({
+      ...plano,
+      checklist: (plano.checklist || []).map((i) => (i.id === id
+        ? { ...i, feita, feitaEm: feita ? new Date().toISOString() : undefined }
+        : i)),
+    });
+  }
+
+  if (!estado.total) {
+    return (
+      <div className="rounded-sm border border-borda2 p-3.5">
+        <div className="rotulo mb-2 text-fraco">Checklist</div>
+        <Legenda>
+          {MODELO_TORNEIO.length} itens com prazo contado a partir da data do evento — da confirmação da
+          quadra ao relatório do patrocinador. O que quebra torneio quase nunca é o que se esqueceu
+          de planejar; é o que se lembrou tarde demais para resolver barato.
+        </Legenda>
+        <div className="mt-3">
+          <Botao onClick={() => void dados.planos.salvar({ ...plano, checklist: gerarChecklist() })}>
+            Criar o checklist
+          </Botao>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-sm border border-borda2 p-3.5">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="rotulo text-fraco">Checklist</span>
+        <span className="tabular text-[13px] text-suave">
+          {numero(estado.feitas)} de {numero(estado.total)}
+        </span>
+      </div>
+      <Barra valor={estado.progresso}
+        cor={estado.progresso >= 1 ? 'var(--color-verde)' : 'var(--color-creme)'} />
+
+      {risco && (
+        <div className="mt-3">
+          <Aviso tom={risco.tom}>{risco.texto}</Aviso>
+        </div>
+      )}
+
+      {!tudo ? (
+        <div className="mt-3 space-y-1">
+          {estado.atrasados.map((i) => (
+            <LinhaDoItem key={i.id} item={i} aoMarcar={(f) => void marcar(i.id, f)} />
+          ))}
+          {estado.agora.map((i) => (
+            <LinhaDoItem key={i.id} item={i} aoMarcar={(f) => void marcar(i.id, f)} />
+          ))}
+          {!estado.atrasados.length && !estado.agora.length && (
+            <Legenda>Nada vence nos próximos dez dias. Abra a lista inteira para ver o que vem.</Legenda>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-4">
+          {estado.porFase.map((g) => (
+            <div key={g.fase}>
+              <div className="rotulo mb-1.5 text-fraco">
+                {g.nome} · {g.feitas}/{g.itens.length}
+              </div>
+              <div className="space-y-1">
+                {g.itens.map((i) => (
+                  <LinhaDoItem key={i.id} item={i} aoMarcar={(f) => void marcar(i.id, f)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button onClick={() => setTudo(!tudo)}
+        className="rotulo mt-3 text-fraco transition-colors hover:text-creme">
+        {tudo ? 'mostrar só o que é agora' : 'ver a lista inteira'}
+      </button>
+    </div>
+  );
+}
+
+function LinhaDoItem({
+  item, aoMarcar,
+}: { item: ItemComPrazo; aoMarcar: (feita: boolean) => void }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-sm px-1.5 py-1.5 transition-colors hover:bg-superficie2">
+      <button onClick={() => aoMarcar(!item.feita)} aria-label={item.feita ? 'Desmarcar' : 'Marcar'}
+        className="mt-0.5 shrink-0 text-fraco transition-colors hover:text-creme">
+        {item.feita ? <CircleCheck size={16} className="text-verde" /> : <Circle size={16} />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className={'text-[13px] leading-snug ' + (item.feita ? 'text-fraco line-through' : 'text-creme')}>
+          {item.titulo}
+        </div>
+        {item.detalhe && !item.feita && (
+          <div className="mt-0.5 text-[12px] leading-snug text-fraco">{item.detalhe}</div>
+        )}
+      </div>
+      {item.prazo && !item.feita && (
+        <span className={'tabular shrink-0 text-[12px] ' + (item.atrasado ? 'text-perigo' : 'text-fraco')}>
+          {dataCurta(item.prazo)}
+        </span>
       )}
     </div>
   );

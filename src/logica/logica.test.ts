@@ -37,6 +37,8 @@ import {
 import {
   calcularCapacidade, zonaDaSemana, diaMaisCheio, horasDeCorpo,
 } from './capacidade';
+import { gerarChecklist, prazoDoItem, estadoDoChecklist, riscoDoEvento } from './checklist';
+import { MODELO_TORNEIO } from '../dados/checklistTorneio';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
@@ -1188,5 +1190,83 @@ describe('capacidade da semana', () => {
     });
     expect(d.data).toBe('2026-08-29');
     expect(d.horas).toBe(10);
+  });
+});
+
+describe('checklist de torneio', () => {
+  const HOJE = '2026-08-28';
+  const plano = (p: Partial<PlanoEvento> = {}): PlanoEvento => ({
+    id: 'e', nome: 'Etapa', data: '2026-09-15', precoInscricao: 300, unidade: 'dupla',
+    capacidade: 64, inscritos: 0, patrocinioContratado: 0, custos: [],
+    status: 'confirmado', ordem: 1, criadoEm: agora,
+    checklist: gerarChecklist(), ...p,
+  });
+
+  it('o modelo nasce inteiro e nenhum item vem marcado', () => {
+    const c = gerarChecklist();
+    expect(c.length).toBe(MODELO_TORNEIO.length);
+    expect(c.every((i) => !i.feita)).toBe(true);
+    expect(new Set(c.map((i) => i.id)).size).toBe(c.length);
+  });
+
+  it('o prazo de cada item sai da data do evento', () => {
+    // 18 dias antes de 15/09.
+    expect(prazoDoItem('2026-09-15', 18)).toBe('2026-08-28');
+    expect(prazoDoItem('2026-09-15', 0)).toBe('2026-09-15');
+    expect(prazoDoItem('2026-09-15', -3)).toBe('2026-09-18');
+  });
+
+  it('separa o vencido do que vence nos próximos dez dias', () => {
+    const e = estadoDoChecklist(plano(), HOJE, 10);
+    expect(e.temData).toBe(true);
+    // A 18 dias do evento, tudo com prazo maior que 18 dias antes já venceu.
+    expect(e.atrasados.every((i) => i.prazo < HOJE)).toBe(true);
+    expect(e.agora.every((i) => i.prazo >= HOJE && i.prazo <= somaDias(HOJE, 10))).toBe(true);
+    // Nada da fase do dia ou do pós aparece ainda.
+    expect(e.agora.some((i) => i.fase === 'depois')).toBe(false);
+  });
+
+  it('marcar um item tira ele dos atrasados e move o progresso', () => {
+    const p = plano();
+    const antes = estadoDoChecklist(p, HOJE);
+    const alvo = antes.atrasados[0];
+    const depois = estadoDoChecklist({
+      ...p,
+      checklist: p.checklist!.map((i) => (i.id === alvo.id ? { ...i, feita: true } : i)),
+    }, HOJE);
+    expect(depois.feitas).toBe(antes.feitas + 1);
+    expect(depois.atrasados.find((i) => i.id === alvo.id)).toBeUndefined();
+    expect(depois.progresso).toBeGreaterThan(antes.progresso);
+  });
+
+  it('sem data no evento não há prazo, e a lista inteira vira o que fazer', () => {
+    const e = estadoDoChecklist(plano({ data: undefined }), HOJE);
+    expect(e.temData).toBe(false);
+    expect(e.atrasados).toHaveLength(0);
+    expect(e.agora).toHaveLength(e.total);
+    expect(riscoDoEvento(e, plano({ data: undefined }), HOJE)?.tom).toBe('info');
+  });
+
+  it('o alerta endurece perto da data, não com o tamanho da lista', () => {
+    const longe = plano({ data: '2026-12-01' });
+    const perto = plano({ data: '2026-09-05' });
+
+    const rLonge = riscoDoEvento(estadoDoChecklist(longe, HOJE), longe, HOJE);
+    const rPerto = riscoDoEvento(estadoDoChecklist(perto, HOJE), perto, HOJE);
+
+    expect(rLonge?.tom).not.toBe('alerta');
+    expect(rPerto?.tom).toBe('alerta');
+  });
+
+  it('depois do evento, o que sobra é a cobrança do pós', () => {
+    const passado = plano({ data: '2026-08-01' });
+    const r = riscoDoEvento(estadoDoChecklist(passado, HOJE), passado, HOJE);
+    expect(r?.texto).toContain('renova');
+
+    const fechado = plano({
+      data: '2026-08-01',
+      checklist: gerarChecklist().map((i) => ({ ...i, feita: true })),
+    });
+    expect(riscoDoEvento(estadoDoChecklist(fechado, HOJE), fechado, HOJE)?.tom).toBe('bom');
   });
 });

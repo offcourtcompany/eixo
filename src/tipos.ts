@@ -647,6 +647,28 @@ export interface PlanoEvento {
   custos: CustoEvento[];
   status: 'rascunho' | 'confirmado' | 'realizado' | 'cancelado';
   nota?: string;
+  /** A lista operacional. Nasce de um modelo e vira sua depois do primeiro uso. */
+  checklist?: ItemChecklist[];
   ordem: number;
   criadoEm: string;
+}
+
+/**
+ * Um item do checklist do evento.
+ *
+ * O campo que faz esta lista valer alguma coisa é `diasAntes`: item sem prazo é
+ * lembrete, e lembrete se lê no dia em que já não adianta. Com prazo, a lista
+ * vira calendário e responde a pergunta certa — o que precisa acontecer nesta
+ * semana para o evento não ficar mais caro.
+ */
+export interface ItemChecklist {
+  id: string;
+  titulo: string;
+  fase: 'desenho' | 'venda' | 'operacao' | 'semana' | 'vespera' | 'dia' | 'depois';
+  /** Dias antes do evento. 0 = no dia. Negativo = depois dele. */
+  diasAntes: number;
+  detalhe?: string;
+  feita: boolean;
+  feitaEm?: string;
+  responsavel?: string;
 }
