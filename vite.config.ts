@@ -6,8 +6,18 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {
-      // TEMPORÁRIO: inclui a bancada de prévia no build para publicar uma
-      // demonstração. Reverter depois — bancada não pertence à produção.
+      /**
+       * Duas entradas de propósito: o app em / e a **demonstração navegável**
+       * em /preview.html, com dados fictícios.
+       *
+       * A bancada nasceu como ferramenta de desenvolvimento e virou vitrine:
+       * dá para mostrar o sistema inteiro funcionando, no celular de quem
+       * estiver na frente, sem conta e sem expor dado real. Para alguém que
+       * vende sistema no meio esportivo, isso é ativo, não sobra de obra.
+       *
+       * O custo é honesto e pequeno: o código de dados falsos vai junto no
+       * pacote, uns 8 kB.
+       */
       input: { index: 'index.html', preview: 'preview.html' },
       output: {
         /**

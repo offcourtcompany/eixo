@@ -6,8 +6,11 @@
  * navegador. Aqui as telas rodam com dados falsos e sem Firebase, então dá para
  * ver cada uma de verdade antes de existir projeto no console.
  *
- * Não entra no build de produção: o vite só empacota o index.html.
- * Abra em: http://localhost:5173/preview.html
+ * Desde 28/08/2026 ela também é **pública**, em /preview.html, servindo de
+ * demonstração navegável do sistema — por isso os dados de exemplo devem
+ * continuar plausíveis e nunca conter nada real.
+ *
+ * Local: http://localhost:5173/preview.html
  */
 import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -263,7 +266,11 @@ function Bancada() {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-borda2 bg-fundo px-4 py-2">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-1.5">
-          <span className="mr-2 titulo text-sm">PRÉVIA</span>
+          {/* Agora que a página é pública, ela precisa se apresentar: quem cai
+              aqui sem contexto tem que entender em uma linha que é demonstração
+              e que nenhum número é de alguém de verdade. */}
+          <span className="mr-2 font-mono text-[13px] uppercase tracking-[0.22em] text-creme">EIXO</span>
+          <span className="rotulo mr-3 text-fraco">demonstração · dados fictícios</span>
           {TELAS.map((t) => (
             <button key={t} onClick={() => setTela(t)}
               className={'rounded-lg px-2.5 py-1 text-[12px] transition '

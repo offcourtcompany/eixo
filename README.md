@@ -29,9 +29,9 @@ Duas páginas sobem:
 
 - `http://localhost:5173` — o app de verdade. Sem Firebase configurado ele entra em **modo local** (seção 1.1) em vez de barrar a entrada.
 - `http://localhost:5173/preview.html` — **bancada de prévia**: as telas rodando
-  com dados falsos, sem Firebase e sem login. Serve para ver e mexer no visual
-  antes de qualquer configuração, e para conferir uma mudança sem sujar seus
-  dados reais. Não entra no build de produção.
+  com dados falsos, sem Firebase e sem login. Serve para conferir qualquer
+  mudança sem sujar seus dados reais — e é a mesma página publicada em
+  <https://eixo-ten.vercel.app/preview.html> como demonstração navegável.
 
 ## 1.1 Modo local — usar antes de existir nuvem
 
