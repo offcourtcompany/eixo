@@ -26,6 +26,7 @@ import {
 } from './semana';
 import { reagendar, paraRevisar, estadoDoEstudo, abertosDemais } from './estudo';
 import { lerVida, aUnicaCoisa } from './consultor';
+import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
@@ -651,5 +652,40 @@ describe('consultor', () => {
     const s = lerVida({ ...base, habitosEmRisco: ['Treino de força'] });
     expect(s.find((x) => x.id === 'habitos-risco')?.gravidade).toBe('alerta');
     expect(s.find((x) => x.id === 'habitos-risco')?.acao).toContain('piso');
+  });
+});
+
+describe('erros de gravação', () => {
+  it('permissão negada aponta para as regras do Firestore', () => {
+    relatarFalha({ code: 'permission-denied', message: 'x' }, 'salvar em lancamentos');
+    const f = falhaAtual()!;
+    expect(f.codigo).toBe('permission-denied');
+    expect(f.saida).toContain('regras do Firestore');
+    limparFalha();
+    expect(falhaAtual()).toBeNull();
+  });
+
+  it('campo indefinido é assumido como defeito do app, não do usuário', () => {
+    relatarFalha(
+      { message: 'Function setDoc() called with invalid data. Unsupported field value: undefined' },
+      'salvar em lancamentos',
+    );
+    expect(falhaAtual()!.saida).toContain('defeito do app');
+    limparFalha();
+  });
+
+  it('offline manda não registrar de novo', () => {
+    relatarFalha({ code: 'unavailable', message: 'client is offline' }, 'salvar');
+    expect(falhaAtual()!.saida).toContain('Não registre de novo');
+    limparFalha();
+  });
+
+  it('quem se inscreve recebe a falha atual na hora', () => {
+    relatarFalha({ code: 'unauthenticated', message: '' }, 'salvar');
+    let recebida: string | null = null;
+    const parar = inscreverEmFalhas((f) => { recebida = f?.codigo ?? null; });
+    expect(recebida).toBe('unauthenticated');
+    parar();
+    limparFalha();
   });
 });

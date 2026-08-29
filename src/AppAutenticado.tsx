@@ -7,6 +7,8 @@ import { modoLocal } from './firebase';
 import { useDadosApp } from './dadosApp';
 import { sair } from './store';
 import { gerar } from './logica/recorrentes';
+import { inscreverEmFalhas, limparFalha, type Falha } from './erros';
+import { FaixaDeFalha } from './componentes/ui';
 import Hoje from './telas/Hoje';
 import Agenda from './telas/Agenda';
 import Nutricao from './telas/Nutricao';
@@ -35,6 +37,11 @@ type Aba = typeof ABAS[number]['id'] | 'ajustes' | 'briefing' | 'consultor';
 export default function AppAutenticado({ uid, email }: { uid: string; email: string }) {
   const dados = useDadosApp(uid);
   const [aba, setAba] = useState<Aba>('hoje');
+  const [falha, setFalha] = useState<Falha | null>(null);
+
+  // Falha de gravação vira faixa no topo. Antes disso, o app falhava calado —
+  // e app que escreve em banco remoto e não avisa ensina a desconfiar de tudo.
+  useEffect(() => inscreverEmFalhas(setFalha), []);
 
   // Os fixos do mês entram sozinhos, uma vez por carregamento — e só depois que
   // as duas coleções chegaram, porque antes disso não dá para saber o que já
@@ -68,6 +75,7 @@ export default function AppAutenticado({ uid, email }: { uid: string; email: str
 
   return (
     <div className="min-h-dvh">
+      {falha && <FaixaDeFalha falha={falha} aoFechar={limparFalha} />}
       <header className="sticky top-0 z-30 border-b border-borda2 bg-fundo">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <div className="flex items-center">

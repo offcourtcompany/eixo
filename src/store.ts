@@ -19,6 +19,7 @@ import {
   onSnapshot, doc, setDoc, deleteDoc, query, orderBy,
 } from 'firebase/firestore';
 import { auth, modoLocal } from './firebase';
+import { relatarFalha } from './erros';
 import { colecaoDo, docDo, docPerfil } from './db';
 import { useColecaoLocal, useDiasLocal, usePerfilLocal } from './localdb';
 import type { Dia, Perfil } from './tipos';
@@ -68,12 +69,22 @@ function useColecaoNuvem<T extends ComId>(
     const id = item.id || doc(colecaoDo(uid, nome)).id;
     const { id: _ignorado, ...dados } = item;
     void _ignorado;
-    await setDoc(docDo(uid, nome, id), dados, { merge: true });
+    try {
+      await setDoc(docDo(uid, nome, id), dados, { merge: true });
+    } catch (e) {
+      relatarFalha(e, `salvar em ${nome}`);
+      throw e;
+    }
     return id;
   }, [uid, nome]);
 
   const remover = useCallback(async (id: string) => {
-    await deleteDoc(docDo(uid, nome, id));
+    try {
+      await deleteDoc(docDo(uid, nome, id));
+    } catch (e) {
+      relatarFalha(e, `remover de ${nome}`);
+      throw e;
+    }
   }, [uid, nome]);
 
   return { itens, pronto, salvar, remover };
@@ -94,7 +105,12 @@ function usePerfilNuvem(uid: string) {
   const [perfil, setPerfil] = useState<Perfil>({});
   useEffect(() => onSnapshot(docPerfil(uid), (s) => setPerfil((s.data() as Perfil) || {})), [uid]);
   const salvarPerfil = useCallback(async (dados: Partial<Perfil>) => {
-    await setDoc(docPerfil(uid), { ...dados, atualizadoEm: new Date().toISOString() }, { merge: true });
+    try {
+      await setDoc(docPerfil(uid), { ...dados, atualizadoEm: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      relatarFalha(e, 'salvar o perfil');
+      throw e;
+    }
   }, [uid]);
   return { perfil, salvarPerfil };
 }

@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { X, TriangleAlert } from 'lucide-react';
+import type { Falha } from '../erros';
 
 /**
  * Três registros de superfície, na ordem em que a referência os usa:
@@ -197,5 +198,33 @@ export function Aviso({ tom = 'alerta', children }: { tom?: 'alerta' | 'info' | 
   };
   return (
     <div className={`rounded-sm border px-3.5 py-3 text-[13px] leading-relaxed ${tons[tom]}`}>{children}</div>
+  );
+}
+
+/**
+ * A faixa de falha de gravação.
+ *
+ * Fica fixa no topo, acima de tudo, e não some sozinha: falha de escrita é a
+ * única coisa neste app que interrompe o que você está fazendo, porque é a
+ * única em que continuar registrando piora a situação.
+ */
+export function FaixaDeFalha({ falha, aoFechar }: { falha: Falha; aoFechar: () => void }) {
+  return (
+    <div className="fixed inset-x-0 top-0 z-[60] border-b border-perigo/50 bg-fundo px-4 py-3">
+      <div className="mx-auto flex max-w-3xl items-start gap-3">
+        <TriangleAlert size={16} className="mt-0.5 shrink-0 text-perigo" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] leading-relaxed text-perigo">{falha.mensagem}</p>
+          {falha.saida && (
+            <p className="mt-1 text-[12px] leading-relaxed text-suave">{falha.saida}</p>
+          )}
+          <p className="rotulo mt-1.5 text-fraco">código: {falha.codigo}</p>
+        </div>
+        <button onClick={aoFechar} aria-label="Fechar aviso"
+          className="shrink-0 rounded-sm p-1 text-fraco transition-colors hover:text-creme">
+          <X size={16} />
+        </button>
+      </div>
+    </div>
   );
 }

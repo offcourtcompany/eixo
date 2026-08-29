@@ -498,3 +498,29 @@ export interface Conquista {
   ordem: number;
   criadoEm: string;
 }
+
+/**
+ * Uma ideia central de um material — o conteúdo embarcado.
+ *
+ * Existe porque o objetivo aqui não é ler o livro: é entender a ideia e saber
+ * onde ela encosta na sua vida. Por isso todo item tem duas partes obrigatórias:
+ * `conteudo`, que explica o mecanismo, e `aplicacao`, que diz o que fazer com
+ * ele no seu caso concreto — arena, torneio, cota, dívida.
+ *
+ * O que está escrito aqui é **resumo autoral**, não o texto dos autores: são as
+ * ideias reescritas com as suas palavras e o seu contexto. Resumo não substitui
+ * o livro, e a tela diz isso — mas resolve o problema de quem não vai ler
+ * treze livros e mesmo assim precisa das ideias.
+ */
+export interface Ideia {
+  id: string;
+  estudoId: string;
+  titulo: string;
+  /** O que é e por que funciona. */
+  conteudo: string;
+  /** Onde isso encosta no que você faz. */
+  aplicacao: string;
+  ordem: number;
+  estudada: boolean;
+  criadoEm: string;
+}

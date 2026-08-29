@@ -26,6 +26,20 @@ export function bd(): Firestore {
   if (!instancia) {
     instancia = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }),
+      /**
+       * SEM ISTO O APP NÃO SALVA NADA.
+       *
+       * O Firestore recusa campo com valor `undefined` — ele lança em vez de
+       * ignorar. O app tem 27 campos opcionais escritos como
+       * `campo: valor || undefined`, idioma que o armazenamento local sempre
+       * aceitou porque JSON descarta undefined sozinho. Quando o Firebase
+       * entrou, todo formulário com campo opcional vazio passou a falhar —
+       * inclusive todo lançamento, que sempre manda `frenteId`.
+       *
+       * Ligar isto faz o Firestore se comportar como o local: campo indefinido
+       * simplesmente não é gravado.
+       */
+      ignoreUndefinedProperties: true,
     });
   }
   return instancia;
