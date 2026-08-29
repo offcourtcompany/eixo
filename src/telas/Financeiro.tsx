@@ -15,6 +15,7 @@ import { BlocoFixos, AConfirmar } from '../componentes/Fixos';
 import { EscolhaDeFrente } from '../componentes/Frentes';
 import { BlocoPorFrente, BlocoModelos } from '../componentes/PorFrente';
 import { BlocoPatrimonio } from '../componentes/Patrimonio';
+import { BlocoCaixa } from '../componentes/Caixa';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
   Folha, Vazio, Barra, Aviso, Legenda, Pilula,
@@ -32,6 +33,10 @@ export default function Financeiro({ dados }: { dados: DadosApp }) {
     <div className="space-y-6">
       <NavegadorDeMes mes={mes} aoMudar={setMes} />
       <PainelDoMes resumo={resumo} pisoFixo={pisoFixo} />
+      {/* A projeção vem antes do histórico de propósito: o mês fechado explica
+          o passado, e a decisão que você toma ao abrir esta tela é sobre o que
+          vem. */}
+      <BlocoCaixa dados={dados} />
       <GraficoDeMeses serie={serie} pisoFixo={pisoFixo} />
       <BlocoModelos dados={dados} mes={mes} />
       <BlocoPorFrente dados={dados} mes={mes} />

@@ -245,7 +245,7 @@ function FormularioOportunidade({
   const [v, setV] = useState({
     empresa: '', contato: '', telefone: '', etapa: 'lista' as EtapaFunil,
     valor: '', recorrente: false, frenteId: undefined as string | undefined,
-    proximoPasso: '', proximoEm: '', dor: '', nota: '', motivoPerda: '',
+    proximoPasso: '', proximoEm: '', previsaoEm: '', dor: '', nota: '', motivoPerda: '',
   });
   const [chave, setChave] = useState('');
 
@@ -262,6 +262,7 @@ function FormularioOportunidade({
       frenteId: oportunidade?.frenteId,
       proximoPasso: oportunidade?.proximoPasso || '',
       proximoEm: oportunidade?.proximoEm || '',
+      previsaoEm: oportunidade?.previsaoEm || '',
       dor: oportunidade?.dor || '',
       nota: oportunidade?.nota || '',
       motivoPerda: oportunidade?.motivoPerda || '',
@@ -284,6 +285,7 @@ function FormularioOportunidade({
       frenteId: v.frenteId,
       proximoPasso: v.proximoPasso.trim() || undefined,
       proximoEm: v.proximoEm || undefined,
+      previsaoEm: v.previsaoEm || undefined,
       dor: v.dor.trim() || undefined,
       nota: v.nota.trim() || undefined,
       motivoPerda: v.etapa === 'perdido' ? (v.motivoPerda.trim() || undefined) : undefined,
@@ -375,6 +377,14 @@ function FormularioOportunidade({
               </div>
             )}
           </div>
+        )}
+
+        {emAberto && (
+          <Campo rotulo="Previsão de entrada do dinheiro"
+            dica="Diferente do próximo passo: o passo é a próxima conversa, isto é o caixa. Só com esta data a oportunidade aparece na projeção de 90 dias — e sempre pelo valor ponderado pela etapa, nunca cheio.">
+            <Entrada type="date" value={v.previsaoEm}
+              onChange={(e) => setV({ ...v, previsaoEm: e.target.value })} />
+          </Campo>
         )}
 
         {v.etapa === 'perdido' && (

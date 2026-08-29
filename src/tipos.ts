@@ -559,6 +559,15 @@ export interface Oportunidade {
   frenteId?: string;
   proximoPasso?: string;
   proximoEm?: string;
+  /**
+   * Quando o dinheiro entra, se entrar. É diferente do próximo passo: o passo é
+   * a próxima conversa, isto é o caixa.
+   *
+   * Só o que tem esta data preenchida aparece na projeção de 90 dias, e sempre
+   * pelo valor ponderado pela etapa. Oportunidade sem previsão não vira zero na
+   * projeção — vira um aviso de que a projeção está incompleta.
+   */
+  previsaoEm?: string;
   /** O que ela disse que precisa resolver, com as palavras dela. */
   dor?: string;
   nota?: string;

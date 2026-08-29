@@ -149,8 +149,8 @@ function semear() {
   // Um funil com paradas, perdas com motivo e uma temporada fechada: é o
   // estado que a tela precisa saber ler, não o funil ideal.
   const oportunidades: Oportunidade[] = [
-    { id: 'op1', empresa: 'Rede de academias', contato: 'Marina', etapa: 'proposta', valor: 30000, recorrente: true, frenteId: 'f1', proximoPasso: 'Levar na arena numa quinta', proximoEm: somaDias(hoje(), 3), dor: 'Não alcançam quem já pratica esporte', criadoEm: agora, atualizadoEm: agora },
-    { id: 'op2', empresa: 'Distribuidora de bebidas', etapa: 'negociacao', valor: 15000, recorrente: false, frenteId: 'f2', proximoPasso: 'Retorno do jurídico', proximoEm: somaDias(hoje(), -2), criadoEm: agora, atualizadoEm: agora },
+    { id: 'op1', empresa: 'Rede de academias', contato: 'Marina', etapa: 'proposta', valor: 30000, recorrente: true, frenteId: 'f1', proximoPasso: 'Levar na arena numa quinta', proximoEm: somaDias(hoje(), 3), previsaoEm: somaDias(hoje(), 45), dor: 'Não alcançam quem já pratica esporte', criadoEm: agora, atualizadoEm: agora },
+    { id: 'op2', empresa: 'Distribuidora de bebidas', etapa: 'negociacao', valor: 15000, recorrente: false, frenteId: 'f2', proximoPasso: 'Retorno do jurídico', proximoEm: somaDias(hoje(), -2), previsaoEm: somaDias(hoje(), 20), criadoEm: agora, atualizadoEm: agora },
     { id: 'op3', empresa: 'Clínica de fisioterapia', etapa: 'contato', valor: 10000, recorrente: true, criadoEm: agora, atualizadoEm: agora },
     { id: 'op4', empresa: 'Loja de material esportivo', etapa: 'reuniao', valor: 8000, recorrente: false, proximoPasso: 'Enviar proposta', proximoEm: somaDias(hoje(), 5), criadoEm: agora, atualizadoEm: agora },
     { id: 'op5', empresa: 'Construtora', etapa: 'fechado', valor: 22000, recorrente: true, criadoEm: agora, atualizadoEm: agora },

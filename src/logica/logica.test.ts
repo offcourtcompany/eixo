@@ -27,6 +27,9 @@ import {
 import { reagendar, paraRevisar, estadoDoEstudo, abertosDemais } from './estudo';
 import { lerVida, aUnicaCoisa } from './consultor';
 import { resumoDoFunil, taxaReal, pipelineNecessario, motivosDePerda } from './funil';
+import {
+  projetarCaixa, movimentosPrevistos, gastoVariavel, dividaDiluida, porSemana, ritmoMensal,
+} from './caixa';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
@@ -757,5 +760,145 @@ describe('funil de receita', () => {
     ]);
     expect(m[0]).toEqual(['Sem verba', 2]);
     expect(m.find(([k]) => k === 'sem motivo registrado')?.[1]).toBe(1);
+  });
+});
+
+describe('projeção de caixa', () => {
+  const D = '2026-08-01';
+
+  const rec = (p: Partial<Recorrente>): Recorrente => ({
+    id: 'r', nome: 'Seguro', tipo: 'saida', valor: 500, categoria: 'Seguro',
+    diaDoMes: 10, fixo: true, ativo: true, criadoEm: '2026-01-01T00:00:00.000Z', ...p,
+  });
+  const lanc = (p: Partial<Lancamento>): Lancamento => ({
+    id: 'l', data: '2026-07-05', tipo: 'saida', valor: 100, categoria: 'Comida',
+    criadoEm: agora, ...p,
+  });
+  const opo = (p: Partial<Oportunidade>): Oportunidade => ({
+    id: 'o', empresa: 'Marca', etapa: 'proposta', valor: 10000, recorrente: false,
+    criadoEm: agora, atualizadoEm: agora, ...p,
+  });
+  const base = {
+    lancamentos: [] as Lancamento[], recorrentes: [] as Recorrente[],
+    dividas: [] as Divida[], oportunidades: [] as Oportunidade[], data: D,
+  };
+
+  it('a média do variável ignora o que já é fixo ou nasceu de um fixo', () => {
+    const g = gastoVariavel([
+      lanc({ id: 'a', data: '2026-07-05', valor: 900 }),
+      lanc({ id: 'b', data: '2026-07-10', valor: 600, fixo: true }),
+      lanc({ id: 'c', data: '2026-07-12', valor: 500, deRecorrente: 'r' }),
+      lanc({ id: 'd', data: '2026-07-20', tipo: 'entrada', valor: 5000 }),
+    ], D);
+    expect(g.mesesDeHistorico).toBe(1);
+    expect(g.mensal).toBe(900);
+    expect(g.confiavel).toBe(false);
+  });
+
+  it('não conta duas vezes o fixo que já virou lançamento no mês', () => {
+    const r = rec({ id: 'seg', valor: 520, diaDoMes: 20 });
+    const so = movimentosPrevistos({ ...base, recorrentes: [r] })
+      .filter((m) => m.data === '2026-08-20');
+    expect(so).toHaveLength(1);
+
+    const com = movimentosPrevistos({
+      ...base,
+      recorrentes: [r],
+      lancamentos: [lanc({ id: 'g', data: '2026-08-20', valor: 520, deRecorrente: 'seg' })],
+    }).filter((m) => m.data === '2026-08-20');
+    expect(com).toHaveLength(1);
+    expect(com[0].fonte).toBe('lancado');
+  });
+
+  it('encontra a data em que o caixa cruza o zero', () => {
+    // 2.500 de partida, 1.000/mês de fixo saindo no dia 10, nada entrando.
+    // Três saídas na janela: ago, set e out.
+    const p = projetarCaixa({
+      ...base, saldoInicial: 2500,
+      recorrentes: [rec({ valor: 1000, diaDoMes: 10 })],
+    });
+    expect(p.aperto).toBe('2026-10-10');
+    expect(p.saldoFinal).toBe(-500);
+    expect(p.faltaParaNaoFurar).toBe(500);
+  });
+
+  it('zero não é furo: a data do aperto exige cruzar o zero, não encostar', () => {
+    const p = projetarCaixa({
+      ...base, saldoInicial: 3000,
+      recorrentes: [rec({ valor: 1000, diaDoMes: 10 })],
+    });
+    expect(p.aperto).toBeUndefined();
+    expect(p.saldoFinal).toBe(0);
+  });
+
+  it('sem reserva informada, a linha vira variação e não existe data de aperto', () => {
+    const p = projetarCaixa({ ...base, recorrentes: [rec({ valor: 1000, diaDoMes: 10 })] });
+    expect(p.temSaldo).toBe(false);
+    expect(p.saldoInicial).toBe(0);
+    // Cruza o zero no primeiro fixo, mas isso é variação — a tela não chama de aperto.
+    expect(p.saldoFinal).toBe(-3000);
+  });
+
+  it('o funil só entra na segunda linha, e só com previsão escrita', () => {
+    const p = projetarCaixa({
+      ...base, saldoInicial: 1000,
+      oportunidades: [
+        opo({ id: 'a', etapa: 'proposta', valor: 10000, previsaoEm: '2026-09-01' }),
+        opo({ id: 'b', etapa: 'negociacao', valor: 20000 }),
+      ],
+    });
+    expect(p.entradasDoFunil).toBe(5000);       // 10.000 × 0,5
+    expect(p.saldoFinal).toBe(1000);            // a linha base não vê o funil
+    expect(p.semPrevisao).toBe(1);
+    const dia = p.dias.find((d) => d.data === '2026-09-01');
+    expect(dia?.comFunil).toBe(6000);
+    expect(dia?.saldo).toBe(1000);
+  });
+
+  it('oportunidade fechada ou perdida não entra na projeção', () => {
+    const p = projetarCaixa({
+      ...base, saldoInicial: 0,
+      oportunidades: [
+        opo({ id: 'a', etapa: 'fechado', valor: 10000, previsaoEm: '2026-09-01' }),
+        opo({ id: 'b', etapa: 'perdido', valor: 10000, previsaoEm: '2026-09-01' }),
+      ],
+    });
+    expect(p.entradasDoFunil).toBe(0);
+    expect(p.semPrevisao).toBe(0);
+  });
+
+  it('a mínima da dívida some quando ela já está cadastrada nos fixos', () => {
+    const ds = [divida({ saldo: 13000, taxaMensal: 0.15, parcelaMinima: 600 })];
+    const semFixo = dividaDiluida(ds, []);
+    expect(semFixo.incluir).toBe(true);
+    expect(semFixo.mensal).toBe(600);
+
+    const comFixo = dividaDiluida(ds, [rec({ categoria: 'Dívida / juros', valor: 600 })]);
+    expect(comFixo.incluir).toBe(false);
+    expect(comFixo.diaria).toBe(0);
+  });
+
+  it('o ritmo mensal fecha a conta de entrada, saída e sobra', () => {
+    const r = ritmoMensal({
+      ...base,
+      recorrentes: [
+        rec({ id: 'e', nome: 'Arena', tipo: 'entrada', valor: 4000, categoria: 'Gestão de arena', fixo: false }),
+        rec({ id: 's', valor: 1500 }),
+      ],
+      lancamentos: [lanc({ id: 'v', data: '2026-07-05', valor: 900 })],
+      dividas: [divida({ parcelaMinima: 600 })],
+    });
+    expect(r.entradaFixa).toBe(4000);
+    expect(r.saidaFixa).toBe(1500);
+    expect(r.variavel).toBe(900);
+    expect(r.divida).toBe(600);
+    expect(r.sobra).toBe(1000);
+  });
+
+  it('a linha semanal tem treze pontos e termina no último dia', () => {
+    const p = projetarCaixa({ ...base, saldoInicial: 5000 });
+    const s = porSemana(p);
+    expect(s).toHaveLength(13);
+    expect(s[s.length - 1].data).toBe(p.dias[p.dias.length - 1].data);
   });
 });
