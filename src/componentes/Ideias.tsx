@@ -18,7 +18,17 @@ import { numero } from '../formato';
 import { estadoDasIdeias, ideiasDoEstudo, recadoDasIdeias } from '../logica/ideias';
 import { Cartao, Botao, Folha, Barra, Legenda, Aviso, Pilula } from './ui';
 
-export function BlocoIdeiaDoDia({ dados }: { dados: DadosApp }) {
+/**
+ * O mesmo cartão em dois registros.
+ *
+ * Na tela de Estudo ele é o cartão claro — é o assunto da tela, e merece o
+ * contraste. Em Hoje ele **precisa** ser escuro: ali o único cartão claro já é
+ * o previsível ÷ piso fixo, e dois claros na mesma tela matam o contraste que
+ * faz qualquer um dos dois valer. A regra do desenho é um por tela.
+ */
+export function BlocoIdeiaDoDia({
+  dados, tom = 'destaque', aoVerEstante,
+}: { dados: DadosApp; tom?: 'destaque' | 'escuro'; aoVerEstante?: () => void }) {
   const estudos = dados.estudos.itens;
   const ideias = dados.ideias.itens;
   const estado = useMemo(() => estadoDasIdeias(ideias, estudos), [ideias, estudos]);
@@ -26,48 +36,72 @@ export function BlocoIdeiaDoDia({ dados }: { dados: DadosApp }) {
   if (!estado.total) return null;
 
   const ideia = estado.proxima;
+  const claro = tom === 'destaque' && !!ideia;
+
   const doEstudo = ideia ? estudos.find((e) => e.id === ideia.estudoId) : null;
+  const cor = {
+    titulo: claro ? 'text-fundo' : 'text-creme',
+    conta: claro ? 'text-fundo/60' : 'text-fraco',
+    fonte: claro ? 'text-fundo/60' : 'text-fraco',
+    corpo: claro ? 'text-fundo/80' : 'text-suave',
+    fio: claro ? 'border-fundo/15' : 'border-borda2',
+    rotulo: claro ? 'text-fundo/50' : 'text-fraco',
+    aplicacao: claro ? 'text-fundo' : 'text-creme',
+    recado: claro ? 'text-fundo/55' : 'text-fraco',
+    cheio: claro
+      ? 'bg-fundo text-osso hover:bg-fundo/85'
+      : 'bg-creme text-fundo hover:bg-creme/85',
+    vazio: claro
+      ? 'border-fundo/25 text-fundo hover:border-fundo/60'
+      : 'border-borda2 text-suave hover:border-fraco',
+  };
 
   return (
-    <Cartao tom={ideia ? 'destaque' : 'placar'}>
+    <Cartao tom={claro ? 'destaque' : 'placar'}>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className={'titulo text-[19px] ' + (ideia ? 'text-fundo' : '')}>
+        <h2 className={'titulo text-[19px] ' + cor.titulo}>
           {ideia ? 'A ideia de hoje' : 'Estante estudada'}
         </h2>
-        <span className={'tabular text-[13px] ' + (ideia ? 'text-fundo/60' : 'text-fraco')}>
+        <span className={'tabular text-[13px] ' + cor.conta}>
           {numero(estado.estudadas)} / {numero(estado.total)}
         </span>
       </div>
 
       {ideia ? (
         <>
-          <div className="mt-1 text-[12px] text-fundo/60">
+          <div className={'mt-1 text-[12px] ' + cor.fonte}>
             {doEstudo?.titulo}{doEstudo?.autor ? ' · ' + doEstudo.autor : ''}
           </div>
 
-          <h3 className="titulo mt-4 text-[22px] leading-tight text-fundo">{ideia.titulo}</h3>
+          <h3 className={'titulo mt-4 text-[22px] leading-tight ' + cor.titulo}>{ideia.titulo}</h3>
 
-          <p className="mt-3 text-[14px] leading-relaxed text-fundo/80">{ideia.conteudo}</p>
+          <p className={'mt-3 text-[14px] leading-relaxed ' + cor.corpo}>{ideia.conteudo}</p>
 
-          <div className="mt-4 border-t border-fundo/15 pt-4">
-            <div className="rotulo text-fundo/50">Onde isso encosta em você</div>
-            <p className="mt-2 text-[14px] leading-relaxed text-fundo">{ideia.aplicacao}</p>
+          <div className={'mt-4 border-t pt-4 ' + cor.fio}>
+            <div className={'rotulo ' + cor.rotulo}>Onde isso encosta em você</div>
+            <p className={'mt-2 text-[14px] leading-relaxed ' + cor.aplicacao}>{ideia.aplicacao}</p>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
             <button
               onClick={() => void dados.ideias.salvar({ id: ideia.id, estudada: true })}
-              className="inline-flex items-center gap-2 rounded-sm bg-fundo px-3.5 py-2.5 text-sm text-osso transition-colors hover:bg-fundo/85">
+              className={'inline-flex items-center gap-2 rounded-sm px-3.5 py-2.5 text-sm transition-colors ' + cor.cheio}>
               <Check size={15} />Entendi
             </button>
             <button
               onClick={() => void virarAfazer(dados, ideia)}
-              className="inline-flex items-center gap-2 rounded-sm border border-fundo/25 px-3.5 py-2.5 text-sm text-fundo transition-colors hover:border-fundo/60">
+              className={'inline-flex items-center gap-2 rounded-sm border px-3.5 py-2.5 text-sm transition-colors ' + cor.vazio}>
               <ListPlus size={15} />Virar afazer
             </button>
+            {aoVerEstante && (
+              <button onClick={aoVerEstante}
+                className={'inline-flex items-center gap-2 rounded-sm px-2 py-2.5 text-sm transition-colors ' + cor.recado}>
+                Ver a estante<ChevronRight size={15} />
+              </button>
+            )}
           </div>
 
-          <p className="mt-4 text-[12px] leading-relaxed text-fundo/55">
+          <p className={'mt-4 text-[12px] leading-relaxed ' + cor.recado}>
             {recadoDasIdeias(estado)}
           </p>
         </>

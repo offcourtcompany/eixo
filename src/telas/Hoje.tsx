@@ -16,8 +16,9 @@ import { itensDoDia, separarAfazeres } from '../logica/agenda';
 import { PROGRAMAS } from '../dados/programas';
 import { Cartao, TituloSecao, Botao, Barra, Aviso, Legenda, Metrica, Vazio } from '../componentes/ui';
 import { ConviteDeFechamento } from '../componentes/FecharSemana';
+import { BlocoIdeiaDoDia } from '../componentes/Ideias';
 
-type Destino = 'dinheiro' | 'habitos' | 'treino' | 'metas' | 'briefing' | 'agenda';
+type Destino = 'dinheiro' | 'habitos' | 'treino' | 'metas' | 'briefing' | 'agenda' | 'estudo';
 
 export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: Destino) => void }) {
   const data = hoje();
@@ -291,6 +292,12 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
           </Legenda>
         </div>
       </Cartao>
+
+      {/* Escura de propósito: o cartão claro desta tela é o previsível ÷ piso,
+          e dois claros na mesma tela anulam o contraste dos dois. Fica aqui, no
+          fim, porque não é urgência — é a única coisa da tela que trata do ano
+          que vem em vez do dia de hoje. */}
+      <BlocoIdeiaDoDia dados={dados} tom="escuro" aoVerEstante={() => irPara('estudo')} />
 
       <Cartao>
         <TituloSecao>O mês</TituloSecao>
