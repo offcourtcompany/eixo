@@ -30,11 +30,12 @@ import { resumoDoFunil, taxaReal, pipelineNecessario, motivosDePerda } from './f
 import {
   projetarCaixa, movimentosPrevistos, gastoVariavel, dividaDiluida, porSemana, ritmoMensal,
 } from './caixa';
+import { analisar, seguirOuCancelar, precoDeEquilibrio, resumoDaTemporada } from './evento';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
-  Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade,
+  Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade, PlanoEvento,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -900,5 +901,101 @@ describe('projeção de caixa', () => {
     const s = porSemana(p);
     expect(s).toHaveLength(13);
     expect(s[s.length - 1].data).toBe(p.dias[p.dias.length - 1].data);
+  });
+});
+
+describe('ponto de equilíbrio de evento', () => {
+  const plano = (p: Partial<PlanoEvento> = {}): PlanoEvento => ({
+    id: 'e1', nome: 'Etapa', precoInscricao: 300, unidade: 'dupla',
+    capacidade: 64, inscritos: 0, patrocinioContratado: 0,
+    custos: [
+      { id: 'c1', nome: 'Arbitragem', valor: 3000, tipo: 'fixo' },
+      { id: 'c2', nome: 'Estrutura', valor: 2000, tipo: 'fixo' },
+      { id: 'c3', nome: 'Kit do atleta', valor: 40, tipo: 'porInscrito' },
+    ],
+    status: 'confirmado', ordem: 1, criadoEm: agora, ...p,
+  });
+
+  it('divide o custo fixo pela margem de cada inscrição', () => {
+    const a = analisar(plano());
+    expect(a.custoFixo).toBe(5000);
+    expect(a.custoPorInscrito).toBe(40);
+    expect(a.margemContribuicao).toBe(260);
+    expect(a.pontoDeEquilibrio).toBe(20);   // ceil(5000 / 260)
+    expect(a.ocupacaoNecessaria).toBeCloseTo(20 / 64, 4);
+  });
+
+  it('a cota assinada derruba o ponto de equilíbrio; a em negociação não', () => {
+    const com = analisar(plano({ patrocinioContratado: 3000, patrocinioEmNegociacao: 10000 }));
+    expect(com.pontoDeEquilibrio).toBe(8);  // ceil(2000 / 260)
+    expect(com.receitaGarantida).toBe(3000);
+  });
+
+  it('cota maior que o custo fixo zera o ponto de equilíbrio', () => {
+    const a = analisar(plano({ patrocinioContratado: 6000 }));
+    expect(a.pontoDeEquilibrio).toBe(0);
+    expect(a.faltamInscritos).toBe(0);
+  });
+
+  it('acusa o evento que não fecha nem lotado, e diz de quanto é a cota que falta', () => {
+    // 64 duplas × 260 de margem = 16.640 contra 20.000 de custo fixo.
+    const a = analisar(plano({ custos: [
+      { id: 'c1', nome: 'Estrutura', valor: 20000, tipo: 'fixo' },
+      { id: 'c2', nome: 'Kit', valor: 40, tipo: 'porInscrito' },
+    ] }));
+    expect(a.impossivel).toBe(true);
+    expect(a.patrocinioFaltante).toBeCloseTo(20000 - 64 * 260, 6);
+    expect(a.ocupacaoNecessaria).toBeGreaterThan(1);
+  });
+
+  it('preço abaixo do custo por inscrito: vender mais piora', () => {
+    const a = analisar(plano({ precoInscricao: 30 }));
+    expect(a.margemNegativa).toBe(true);
+    expect(a.pontoDeEquilibrio).toBe(Infinity);
+    expect(a.lotado.lucro).toBeLessThan(a.agora.lucro);
+  });
+
+  it('o capital exposto é o custo fixo que a cota não cobre', () => {
+    expect(analisar(plano()).capitalEmRisco).toBe(5000);
+    expect(analisar(plano({ patrocinioContratado: 4000 })).capitalEmRisco).toBe(1000);
+    expect(analisar(plano({ patrocinioContratado: 9000 })).capitalEmRisco).toBe(0);
+  });
+
+  it('na decisão de seguir ou cancelar, o que já foi pago sai da conta', () => {
+    // 4.000 dos 5.000 de fixo já contratados. Restam 1.000 evitáveis.
+    const p = plano({
+      inscritos: 10,
+      custos: [
+        { id: 'c1', nome: 'Arbitragem', valor: 4000, tipo: 'fixo', comprometido: true },
+        { id: 'c2', nome: 'Mídia', valor: 1000, tipo: 'fixo' },
+        { id: 'c3', nome: 'Kit', valor: 40, tipo: 'porInscrito' },
+      ],
+    });
+    const d = seguirOuCancelar(p);
+    expect(d.custoAfundado).toBe(4000);
+    expect(d.receitaAindaAEntrar).toBe(3000);         // 10 × 300
+    expect(d.custoAindaEvitavel).toBe(1400);          // 1.000 + 10 × 40
+    expect(d.valeRealizar).toBe(true);
+    // Realizar ainda dá prejuízo no papel — e mesmo assim é melhor que cancelar.
+    expect(d.resultadoSeRealizar).toBeLessThan(0);
+    expect(d.diferenca).toBe(1600);
+  });
+
+  it('o preço de equilíbrio mira a ocupação que você espera de verdade', () => {
+    const e = precoDeEquilibrio(plano(), 0.5);        // 32 duplas
+    expect(e.inscritos).toBe(32);
+    expect(e.preco).toBeCloseTo(5000 / 32 + 40, 6);
+    expect(e.diferenca).toBeCloseTo(5000 / 32 + 40 - 300, 6);
+  });
+
+  it('a temporada soma o exposto e separa os que não fecham', () => {
+    const r = resumoDaTemporada([
+      plano({ id: 'a', inscritos: 30 }),
+      plano({ id: 'b', nome: 'Final', custos: [{ id: 'x', nome: 'Estrutura', valor: 30000, tipo: 'fixo' }] }),
+      plano({ id: 'c', status: 'cancelado' }),
+    ]);
+    expect(r.quantidade).toBe(2);
+    expect(r.capitalEmRisco).toBe(5000 + 30000);
+    expect(r.impossiveis.map((p) => p.nome)).toEqual(['Final']);
   });
 });

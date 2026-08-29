@@ -19,7 +19,7 @@ import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
   Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
-  Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade,
+  Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade, PlanoEvento,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
 import { segundaDa } from './logica/semana';
@@ -237,7 +237,37 @@ function semear() {
     { id: 'ta7', titulo: 'Fechar contrato da arena', prazo: somaDias(hoje(), -9), frenteId: 'f0', peso: 'normal', feita: true, feitaEm: agora, criadoEm: agora },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas, oportunidades };
+
+  // Dois eventos próprios: um que fecha com folga e um desenhado no vermelho —
+  // porque o segundo é o caso que a tela existe para revelar.
+  const planos: PlanoEvento[] = [
+    {
+      id: 'pe1', nome: 'Boulevard Open', data: somaDias(hoje(), 29), frenteId: 'f2',
+      precoInscricao: 300, unidade: 'dupla', capacidade: 96, inscritos: 34,
+      patrocinioContratado: 4000, patrocinioEmNegociacao: 15000, outrasReceitas: 2500,
+      custos: [
+        { id: 'x1', nome: 'Arbitragem', valor: 4200, tipo: 'fixo', comprometido: true },
+        { id: 'x2', nome: 'Estrutura e som', valor: 3800, tipo: 'fixo' },
+        { id: 'x3', nome: 'Troféus e premiação', valor: 5200, tipo: 'fixo' },
+        { id: 'x4', nome: 'Mídia e tráfego', valor: 1800, tipo: 'fixo' },
+        { id: 'x5', nome: 'Kit do atleta', valor: 45, tipo: 'porInscrito' },
+      ],
+      status: 'confirmado', ordem: 1, criadoEm: agora,
+    },
+    {
+      id: 'pe2', nome: 'Desafio das Arenas — Final', data: somaDias(hoje(), 82), frenteId: 'f1',
+      precoInscricao: 260, unidade: 'dupla', capacidade: 48, inscritos: 0,
+      patrocinioContratado: 0, patrocinioEmNegociacao: 30000,
+      custos: [
+        { id: 'y1', nome: 'Estrutura da final', valor: 12000, tipo: 'fixo' },
+        { id: 'y2', nome: 'Premiação em dinheiro', valor: 8000, tipo: 'fixo' },
+        { id: 'y3', nome: 'Kit e medalha', valor: 60, tipo: 'porInscrito' },
+      ],
+      status: 'rascunho', ordem: 2, criadoEm: agora,
+    },
+  ];
+
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas, oportunidades, planos };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -288,6 +318,7 @@ function Bancada() {
   const estudos = useColecaoFalsa<EstudoDoc>(inicial.estudos);
   const perguntas = useColecaoFalsa<Pergunta>(inicial.perguntas);
   const conquistas = useColecaoFalsa<Conquista>(inicial.conquistas);
+  const planos = useColecaoFalsa<PlanoEvento>(inicial.planos);
   const oportunidades = useColecaoFalsa<Oportunidade>(inicial.oportunidades);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
@@ -301,7 +332,7 @@ function Bancada() {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
     frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
-    estudos, perguntas, conquistas, oportunidades,
+    estudos, perguntas, conquistas, oportunidades, planos,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,

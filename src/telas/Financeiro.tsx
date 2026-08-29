@@ -16,6 +16,7 @@ import { EscolhaDeFrente } from '../componentes/Frentes';
 import { BlocoPorFrente, BlocoModelos } from '../componentes/PorFrente';
 import { BlocoPatrimonio } from '../componentes/Patrimonio';
 import { BlocoCaixa } from '../componentes/Caixa';
+import { BlocoEventos } from '../componentes/Eventos';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
   Folha, Vazio, Barra, Aviso, Legenda, Pilula,
@@ -40,6 +41,9 @@ export default function Financeiro({ dados }: { dados: DadosApp }) {
       <GraficoDeMeses serie={serie} pisoFixo={pisoFixo} />
       <BlocoModelos dados={dados} mes={mes} />
       <BlocoPorFrente dados={dados} mes={mes} />
+      {/* Por frente olha para trás: quanto cada uma deu. Este olha para a
+          frente: quanto a próxima precisa vender para se pagar. */}
+      <BlocoEventos dados={dados} />
       <BlocoDividas dados={dados} sobra={resumo.sobra} />
       <BlocoPatrimonio dados={dados} />
       <BlocoFixos dados={dados} />

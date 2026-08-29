@@ -576,3 +576,57 @@ export interface Oportunidade {
   criadoEm: string;
   atualizadoEm: string;
 }
+
+// ─────────────────── Ponto de equilíbrio de evento ───────────────────
+
+/**
+ * Uma linha de custo do evento.
+ *
+ * O campo que muda tudo é `tipo`: custo fixo acontece com uma ou com cem
+ * inscrições — arbitragem, som, estrutura, mídia. Custo por inscrito escala com
+ * gente — kit, medalha, água. Somar os dois num orçamento único é o erro que
+ * faz o ponto de equilíbrio ficar invisível.
+ *
+ * `comprometido` marca o que já foi contratado e não volta se o evento cair.
+ * Ele existe para a decisão de seguir ou cancelar, onde tudo que já foi pago
+ * precisa sair da conta.
+ */
+export interface CustoEvento {
+  id: string;
+  nome: string;
+  valor: number;
+  tipo: 'fixo' | 'porInscrito';
+  comprometido?: boolean;
+}
+
+/**
+ * O orçamento de um evento próprio — a etapa do circuito, o open, a clínica.
+ *
+ * Existe separado dos lançamentos porque é **antes**: lançamento registra o que
+ * já aconteceu, isto responde se vale acontecer. Os dois se encontram depois,
+ * pela frente, quando a margem real do evento aparece em Por frente.
+ */
+export interface PlanoEvento {
+  id: string;
+  nome: string;
+  data?: string;
+  frenteId?: string;
+  /** Preço de uma inscrição. */
+  precoInscricao: number;
+  /** A unidade que você vende: dupla, atleta, time. */
+  unidade: string;
+  /** Quantas inscrições cabem. É o teto da receita de inscrição. */
+  capacidade: number;
+  inscritos: number;
+  /** Só o que está assinado. Cota em conversa não paga arbitragem. */
+  patrocinioContratado: number;
+  /** O que está em negociação — aparece na tela, fica fora da conta. */
+  patrocinioEmNegociacao?: number;
+  /** Bar, quadra, camisa: receita que não depende de inscrição. */
+  outrasReceitas?: number;
+  custos: CustoEvento[];
+  status: 'rascunho' | 'confirmado' | 'realizado' | 'cancelado';
+  nota?: string;
+  ordem: number;
+  criadoEm: string;
+}
