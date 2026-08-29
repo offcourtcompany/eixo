@@ -5,7 +5,7 @@
  * específico (dívida em rotativo, ausência de treino de força, receita avulsa
  * contra custo fixo). Tudo é editável e apagável depois.
  */
-import type { Habito, AcaoEstrutural, Meta, Recorrente, Frente } from '../tipos';
+import type { Habito, AcaoEstrutural, Meta, Recorrente, Frente, Refeicao } from '../tipos';
 import { CORES_FRENTE } from '../tipos';
 
 type HabitoSemente = Omit<Habito, 'id' | 'criadoEm'>;
@@ -170,4 +170,87 @@ export const FRENTES_SUGERIDAS: Omit<Frente, 'id' | 'criadoEm'>[] = [
   { nome: 'Boulevard Open', cor: CORES_FRENTE[2], tipo: 'projeto', modelo: 'proprio', ativo: true, ordem: 3 },
   { nome: 'Offcourt', cor: CORES_FRENTE[3], tipo: 'projeto', modelo: 'proprio', ativo: true, ordem: 4 },
   { nome: 'Pessoal', cor: CORES_FRENTE[7], tipo: 'pessoal', ativo: true, ordem: 5 },
+];
+
+/**
+ * O plano de refeições, montado para o dia que você realmente tem — não para
+ * o dia que a dieta genérica assume.
+ *
+ * Três coisas foram levadas a sério aqui. Você trabalha à noite e é produtivo
+ * de madrugada, então não existe "jantar às 19h": as refeições são ancoradas em
+ * eventos ("quando chego na arena"), e a madrugada tem plano em vez de
+ * proibição — horário sem plano vira delivery. Você come em pé, na quadra, com
+ * as mãos ocupadas, então metade das opções é portátil. E há dívida no caixa,
+ * então nada aqui depende de suplemento caro ou de comida de nicho: ovo, frango,
+ * atum, leite, feijão.
+ *
+ * A soma dá cerca de 160 g de proteína, que é o alvo para 88 kg de peso-alvo.
+ * Tudo é editável; isto é ponto de partida, não regra.
+ */
+export const REFEICOES_SUGERIDAS: Omit<Refeicao, 'id' | 'criadoEm'>[] = [
+  {
+    nome: 'Primeira refeição',
+    ancora: 'Assim que eu acordo, antes de abrir o celular',
+    proteinaG: 35,
+    piso: 'Dois ovos. Só isso já conta o dia.',
+    opcoes: [
+      '3 ovos mexidos + 2 fatias de pão + fruta',
+      'Iogurte natural grande + 3 colheres de aveia + banana',
+      'Tapioca com 2 ovos e queijo coalho',
+      'Vitamina: leite, banana, aveia e 2 colheres de leite em pó',
+    ],
+    ordem: 1, ativa: true,
+  },
+  {
+    nome: 'Refeição principal',
+    ancora: 'Antes de sair para a arena',
+    proteinaG: 45,
+    piso: 'Uma palma de proteína no prato, mesmo que o resto não dê.',
+    opcoes: [
+      'Arroz, feijão, 2 palmas de frango grelhado e salada à vontade',
+      'Arroz, feijão, bife e legumes refogados',
+      'Macarrão com carne moída e cenoura ralada',
+      'Peixe grelhado, purê e salada — quando estiver perto de casa',
+    ],
+    ordem: 2, ativa: true,
+  },
+  {
+    nome: 'Na arena',
+    ancora: 'Quando chego na arena, antes do movimento apertar',
+    proteinaG: 25,
+    piso: 'Um copo de leite ou um iogurte. Cabe na mochila.',
+    opcoes: [
+      'Sanduíche de atum com pão integral',
+      'Iogurte grego + castanhas',
+      '3 ovos cozidos levados de casa',
+      'Leite integral 500 ml + banana',
+    ],
+    ordem: 3, ativa: true,
+  },
+  {
+    nome: 'Depois de jogar',
+    ancora: 'Logo que sai da quadra, ainda suado',
+    proteinaG: 30,
+    piso: 'Leite com achocolatado. Sério — proteína e carboidrato juntos.',
+    opcoes: [
+      'Sanduíche de frango desfiado + suco',
+      'Leite com achocolatado + pão com ovo',
+      'Marmita guardada: arroz e frango requentados',
+      'Iogurte grande + 2 bananas + mel',
+    ],
+    ordem: 4, ativa: true,
+  },
+  {
+    nome: 'Madrugada',
+    ancora: 'Quando sento para trabalhar de madrugada',
+    proteinaG: 25,
+    piso: 'Iogurte ou 2 ovos. O objetivo é não chegar no delivery.',
+    opcoes: [
+      'Iogurte natural + aveia',
+      'Omelete de 3 ovos com queijo',
+      'Queijo minas + torradas',
+      'Leite morno + 2 colheres de leite em pó',
+    ],
+    ordem: 5, ativa: true,
+  },
 ];

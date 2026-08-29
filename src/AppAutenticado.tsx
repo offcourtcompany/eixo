@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Sun, Wallet, CalendarDays, CircleCheck, Dumbbell, Target, Settings, ClipboardCopy, LogOut,
+  Sun, Wallet, CalendarDays, CircleCheck, Dumbbell, Target, Settings, ClipboardCopy, LogOut, Apple,
 } from 'lucide-react';
 import { modoLocal } from './firebase';
 import { useDadosApp } from './dadosApp';
@@ -8,6 +8,7 @@ import { sair } from './store';
 import { gerar } from './logica/recorrentes';
 import Hoje from './telas/Hoje';
 import Agenda from './telas/Agenda';
+import Nutricao from './telas/Nutricao';
 import Financeiro from './telas/Financeiro';
 import Habitos from './telas/Habitos';
 import Treino from './telas/Treino';
@@ -20,6 +21,7 @@ const ABAS = [
   { id: 'agenda', nome: 'Agenda', icone: CalendarDays },
   { id: 'dinheiro', nome: 'Finanças', icone: Wallet },
   { id: 'habitos', nome: 'Hábitos', icone: CircleCheck },
+  { id: 'nutricao', nome: 'Comida', icone: Apple },
   { id: 'treino', nome: 'Treino', icone: Dumbbell },
   { id: 'metas', nome: 'Metas', icone: Target },
 ] as const;
@@ -49,6 +51,7 @@ export default function AppAutenticado({ uid, email }: { uid: string; email: str
   const tela = {
     hoje: <Hoje dados={dados} irPara={setAba} />,
     agenda: <Agenda dados={dados} />,
+    nutricao: <Nutricao dados={dados} />,
     dinheiro: <Financeiro dados={dados} />,
     habitos: <Habitos dados={dados} />,
     treino: <Treino dados={dados} />,

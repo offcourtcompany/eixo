@@ -114,7 +114,31 @@ export interface Dia {
   energia?: number;          // 1–5
   sonoHoras?: number;
   peso?: number;
+  /**
+   * Cintura em cm, na altura do umbigo, ao acordar, sem prender a barriga.
+   *
+   * Existe por um motivo que a balança não resolve: quem começa a treinar força
+   * ganha músculo enquanto perde gordura, e nas primeiras semanas o peso trava
+   * ou desce devagar enquanto a gordura está saindo. Sem esta medida, o app
+   * leria isso como fracasso e mandaria cortar comida — o conselho errado no
+   * único momento em que a recomposição é fácil.
+   */
+  cinturaCm?: number;
+  /** Dia de jogo ou torneio: muda a meta de líquido e liga o protocolo. */
+  diaDeJogo?: boolean;
   nota?: string;
+
+  // ── Nutrição
+  /** Quais refeições do plano aconteceram. Chave = id da Refeicao. */
+  refeicoes?: Record<string, boolean>;
+  /** Proteína do dia em gramas. É o único macro que se anota — ver logica/nutricao.ts. */
+  proteinaG?: number;
+  /** Calorias somadas pela consulta de alimentos. Opcional de propósito: é
+   *  consulta, não diário — ninguém é obrigado a fechar o dia. */
+  caloriasKcal?: number;
+  aguaMl?: number;
+  /** Doses de álcool. Não existe para julgar: existe porque muda o resultado. */
+  alcoolDoses?: number;
 }
 
 export interface ResultadoChave {
@@ -166,9 +190,20 @@ export interface Treino {
   criadoEm: string;
 }
 
+export type NivelAtividade = 'leve' | 'moderado' | 'alto' | 'muito-alto';
+
 export interface Perfil {
   nome?: string;
   pesoAlvo?: number;
+
+  // ── Nutrição: sem estes quatro não há gasto estimado, e o app diz isso em
+  // vez de inventar um número redondo.
+  alturaCm?: number;
+  idade?: number;
+  sexo?: 'm' | 'f';
+  nivelAtividade?: NivelAtividade;
+  /** Ritmo alvo de mudança de peso, em kg por semana. Negativo = perder. */
+  ritmoSemanal?: number;
   rendaFixa?: number;        // o piso que precisa ser coberto todo mês
   custoFixoMensal?: number;
   reservaAlvoMeses?: number;
@@ -288,5 +323,59 @@ export interface Marco {
   reserva: number;
   /** O que mudou nesse ponto — de preferência o nome da ação estrutural. */
   nota?: string;
+  criadoEm: string;
+}
+
+/**
+ * Um modelo de refeição — não um cardápio.
+ *
+ * Cardápio fechado morre na primeira semana: basta um dia fora de casa, um
+ * evento que atrasa, um ingrediente que acabou. O que sobrevive é um molde com
+ * opções trocáveis e uma âncora que não seja o relógio.
+ *
+ * Por isso `ancora` é um evento do dia ("depois que eu acordo", "quando chego
+ * na arena") e não um horário: quem trabalha à noite e dorme tarde nunca vai
+ * cumprir um plano que diz "jantar às 19h", e falhar por causa do horário faz
+ * a pessoa achar que falhou na dieta.
+ *
+ * E `piso` é a versão mínima que ainda conta como feita, na mesma lógica do
+ * módulo de hábitos: o piso existe para o dia ruim.
+ */
+export interface Refeicao {
+  id: string;
+  nome: string;
+  /** O evento do dia que dispara a refeição, não a hora. */
+  ancora: string;
+  /** Meta de proteína desta refeição, em gramas. */
+  proteinaG: number;
+  /** A versão de dois minutos. Se só isso acontecer, a refeição conta. */
+  piso: string;
+  /** Opções equivalentes — escolher é mais fácil que decidir do zero. */
+  opcoes: string[];
+  ordem: number;
+  ativa: boolean;
+  criadoEm: string;
+}
+
+/**
+ * Um alimento cadastrado por você.
+ *
+ * Existe porque a tabela embarcada é referência e vai errar: o rótulo do
+ * produto que você compra, a marmita daquele restaurante, a receita da sua
+ * casa. Quando o rótulo diz outra coisa, o rótulo ganha — e o seu alimento
+ * aparece antes dos da tabela na busca.
+ */
+export interface AlimentoMeu {
+  id: string;
+  nome: string;
+  /** Sempre por 100 g, ou 100 ml quando `liquido`. */
+  kcal: number;
+  proteina: number;
+  carbo: number;
+  gordura: number;
+  liquido?: boolean;
+  /** Uma medida caseira sua: "1 marmita", "1 pote". */
+  porcaoNome?: string;
+  porcaoG?: number;
   criadoEm: string;
 }

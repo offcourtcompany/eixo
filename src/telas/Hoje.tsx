@@ -6,7 +6,7 @@ import type { DadosApp } from '../dadosApp';
 import type { Dia } from '../tipos';
 import { EIXOS } from '../tipos';
 import {
-  hoje, dataPorExtenso, moeda, moedaCurta, mesAtual, porcento, diaSemana, trimestreAtual,
+  hoje, dataPorExtenso, moeda, moedaCurta, mesAtual, numero, porcento, diaSemana, trimestreAtual,
   diasRestantesDoTrimestre,
 } from '../formato';
 import { estadoDoHabito, placarDoDia } from '../logica/habitos';
@@ -62,7 +62,7 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
     await dados.salvarDia({ id: data, habitos: marcados });
   }
 
-  async function registrar(campo: 'humor' | 'energia', valor: number) {
+  async function registrar(campo: 'humor' | 'energia' | 'sonoHoras', valor: number) {
     await dados.salvarDia({ id: data, [campo]: valor });
   }
 
@@ -256,11 +256,35 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
         <div className="space-y-4">
           <Escala rotulo="Humor" valor={dia?.humor} aoEscolher={(v) => void registrar('humor', v)} />
           <Escala rotulo="Energia" valor={dia?.energia} aoEscolher={(v) => void registrar('energia', v)} />
+
+          {/* Sono entra aqui, no gesto que já é diário, e não numa tela própria:
+              para quem trabalha de madrugada é a variável que mais mexe em fome,
+              recuperação e humor — e a que mais explica semana ruim. */}
+          <div>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <span className="text-xs font-medium text-suave">Sono desta noite</span>
+              <span className="text-[11px] text-fraco">
+                {dia?.sonoHoras ? numero(dia.sonoHoras, 1) + ' h' : 'sem registro'}
+              </span>
+            </div>
+            <div className="grid grid-cols-6 gap-2">
+              {[4, 5, 6, 7, 8, 9].map((h) => (
+                <button key={h} onClick={() => void registrar('sonoHoras', h)}
+                  className={'rounded-sm py-3 text-sm transition-colors '
+                    + (dia?.sonoHoras === h
+                      ? 'bg-creme text-fundo'
+                      : 'bg-superficie2 text-suave hover:text-creme')}>
+                  {h}h
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="mt-3">
           <Legenda>
-            Dois toques por dia. Depois de algumas semanas isso deixa de ser diário e vira dado: dá para
-            ver se a queda de humor vem antes ou depois da semana em que os hábitos caem — e qual puxa qual.
+            Três toques por dia. Depois de algumas semanas isso deixa de ser diário e vira dado: dá para
+            ver se a queda de humor vem antes ou depois da semana em que os hábitos caem, e o quanto do
+            resto é só noite mal dormida — que é o fator que mais atrapalha comida e treino.
           </Legenda>
         </div>
       </Cartao>

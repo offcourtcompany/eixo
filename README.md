@@ -8,9 +8,9 @@ própria: ele monta um briefing que você copia e cola numa conversa com o Claud
 
 **Lote 1:** Finanças · Hábitos · Metas · Treino, mais o painel de Hoje e o
 gerador de briefing.
-**Agenda (adiantada do lote 2):** eventos, rotinas e afazeres por frente de
-trabalho — o emprego fixo, cada torneio, cada projeto.
-**Falta do lote 2:** Nutrição · Estudo.
+**Agenda e Nutrição (adiantadas do lote 2):** compromissos por frente de
+trabalho, e o plano alimentar com peso, proteína e adesão.
+**Falta do lote 2:** Estudo.
 **Lote 3:** Consultor · Psicólogo · Oportunidades.
 
 ---
@@ -205,6 +205,76 @@ O corte **contratado × próprio** vem de um campo na própria frente. Contratad
 receita garantida por contrato, com o risco de bilheteria do contratante;
 próprio é upside maior com o capital e a ocupação por sua conta.
 
+## 4.3.1 Nutrição
+
+Três decisões clínicas mandam no módulo, e todas existem para o plano
+sobreviver ao mês dois:
+
+**Conta-se proteína, não caloria.** Registrar tudo o que entra na boca é o jeito
+mais rápido de largar uma dieta — trabalho demais para a informação que devolve.
+Proteína é o único macro que paga o atrito: protege músculo em déficit, é o que
+mais sacia, e é o que quase ninguém acerta sem olhar. A caloria entra como alvo
+para dimensionar o prato, e sai do dia a dia.
+
+**O peso do dia é ruído; a leitura oficial é a média de 7 dias.** Alguém de 96 kg
+oscila mais de um quilo entre sábado e domingo só por água, sal e glicogênio.
+A média só aparece com pelo menos três pesagens na janela — com menos, ela
+mentiria com cara de suavizada — e a comparação é sempre média contra média.
+
+**O ajuste vem do resultado, não da equação.** Mifflin-St Jeor erra de 10% a 15%
+para o indivíduo. Depois de duas semanas de dado, quem manda é o ritmo
+observado: o veredito da semana compara com o combinado e manda tirar ou pôr
+comida, com margem de 25% do alvo e piso absoluto de 0,15 kg/semana para não
+perseguir ruído.
+
+Detalhes de desenho que não são acidente:
+
+- A proteína é ancorada no **peso-alvo**, não no atual — quem mira 88 kg não
+  precisa de proteína para manter 96 kg que não quer manter.
+- Há **freio de segurança**: o alvo nunca desce abaixo do metabolismo basal nem
+  de 1.500 kcal, por mais agressivo que seja o ritmo pedido.
+- As refeições são ancoradas em **eventos** ("quando chego na arena"), não em
+  horário. Plano que diz "jantar às 19h" não sobrevive a quem trabalha à noite,
+  e falhar por causa do relógio faz a pessoa achar que falhou na dieta.
+- Cada refeição tem **piso**, como os hábitos: a versão mínima que ainda conta.
+- **Marcar a refeição soma a proteína dela.** Um toque por refeição, em vez de
+  pesar comida.
+- O prato é medido **pela mão** (palma, punho, concha, polegar), não por balança.
+- Álcool tem registro. Não para julgar: porque muda o resultado e some do relato.
+
+## 4.3.2 Cintura, sono, líquido e dia de jogo
+
+Quatro acréscimos feitos depois de uma auditoria do próprio módulo. O primeiro
+não era funcionalidade faltando: era **defeito** no que já existia.
+
+**A cintura tem poder de veto sobre o veredito.** Quem começa a treinar força
+ganha músculo enquanto perde gordura — nas primeiras 8 a 12 semanas o peso trava
+ou desce devagar enquanto a composição melhora. Sem olhar a cintura, o veredito
+lia isso como fracasso e sugeria cortar comida, que é o pior conselho possível
+na única janela em que a recomposição é fácil. Agora, se a cintura encolhe mais
+de 0,15 cm por semana (0,6 cm em quatro semanas, acima do erro de fita) e a
+balança está abaixo do combinado, o veredito responde **recomposição** e não
+emite corte nenhum. O contrário também é lido: peso caindo rápido com cintura
+parada acende alerta de perda de massa magra.
+
+**Sono é registrado no painel de Hoje**, junto de humor e energia — três toques
+por dia. O campo existia no modelo desde o começo e nunca tinha ido para tela
+nenhuma. Para quem trabalha de madrugada é a variável que mais mexe em fome,
+saciedade e recuperação; a média de 14 dias aparece no cartão do corpo, e abaixo
+de 6,5 h a tela diz que nenhum ajuste de prato compensa noite mal dormida.
+
+**A água ganhou meta.** Antes havia contador sem número, o que não serve para
+nada. A base é 35 ml por quilo, mais 600 ml por hora de quadra. Em Salvador a
+perda por suor em esporte de raquete passa de 1 L por hora, então a meta é piso:
+sede e urina escura mandam mais que a conta.
+
+**Dia de jogo tem protocolo próprio.** Um torneio de onze horas não é um dia
+comum com esporte no meio — e é justamente o dia em que a adesão vai a zero e o
+desempenho mais importa. O cartão traz o que comer 3 h antes, 1 h antes, a cada
+45–60 min durante, entre jogos e na janela de 1 h depois, com o porquê de cada
+um, mais a lista do que pôr na mochila **na véspera**. É leitura, não registro:
+cobrar marcação num dia de torneio seria inventar tarefa onde não sobra mão.
+
 ## 4.4 Qualidade
 
 ```bash
@@ -238,6 +308,8 @@ src/
   logica/
     agenda.ts       dia, grade do mês, atrasados, horas por frente
     frentes.ts      margem e R$/hora por frente; contratado × próprio
+    nutricao.ts     alvos, média móvel de peso e o veredito da semana
+    alimentos.ts    busca sem acento e conta de porção
     logica.test.ts  os testes da matemática que dá conselho
     dividas.ts      simulação bola de neve × avalanche
     financas.ts     fechamento do mês, receita previsível × custo fixo
@@ -245,6 +317,7 @@ src/
     recorrentes.ts  geração dos fixos do mês (idempotente, não ressuscita)
     treino.ts       1RM estimado, volume, sugestão de carga
   dados/
+    alimentos.ts    ~140 alimentos brasileiros, por 100 g
     programas.ts    programa de força A/B
     sementes.ts     sugestões iniciais (só entram se você clicar)
   componentes/
@@ -253,7 +326,8 @@ src/
     Frentes.tsx     o seletor de frente, usado por Agenda e Finanças
     PorFrente.tsx   tabela de rentabilidade e o corte contratado × próprio
     Patrimonio.tsx  curva de dívida e reserva ao longo do tempo
-  telas/            Hoje, Agenda, Financeiro, Habitos, Metas, Treino, Briefing, Ajustes
+    Alimentos.tsx   a consulta "quanto tem nisso?" e os alimentos seus
+  telas/            Hoje, Agenda, Financeiro, Nutricao, Habitos, Metas, Treino, Briefing, Ajustes
   preview.tsx       bancada de prévia (desenvolvimento)
 ```
 

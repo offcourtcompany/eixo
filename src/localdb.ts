@@ -95,10 +95,11 @@ export function useColecaoLocal<T extends ComId>(
   const [versao, setVersao] = useState(0);
   useEffect(() => inscrever(nome, () => setVersao((v) => v + 1)), [nome]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `versao` é a chave
-  // de invalidação: ler() consulta estado mutável de módulo, que o linter não vê.
+  // `versao` é a chave de invalidação: ler() consulta estado mutável de módulo,
+  // que o linter não tem como enxergar.
   const itens = useMemo(
     () => ordenar(ler<T[]>(nome, []), campoOrdem, direcao),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [nome, campoOrdem, direcao, versao],
   );
 

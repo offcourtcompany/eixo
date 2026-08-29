@@ -15,13 +15,16 @@ import './index.css';
 import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
-  Frente, Evento, Rotina, Tarefa, Marco,
+  Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
-import { HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS } from './dados/sementes';
+import {
+  HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS, REFEICOES_SUGERIDAS,
+} from './dados/sementes';
 import { trimestreAtual } from './formato';
 import Hoje from './telas/Hoje';
 import Agenda from './telas/Agenda';
+import Nutricao from './telas/Nutricao';
 import Financeiro from './telas/Financeiro';
 import Habitos from './telas/Habitos';
 import Treino from './telas/Treino';
@@ -37,6 +40,10 @@ function semear() {
     ...h, id: 'h' + i, criadoEm: somaDias(hoje(), -45) + 'T00:00:00.000Z',
   }));
 
+  const refeicoes: Refeicao[] = REFEICOES_SUGERIDAS.map((r, i) => ({
+    ...r, id: 'ref' + i, criadoEm: somaDias(hoje(), -45) + 'T00:00:00.000Z',
+  }));
+
   // 40 dias de marcações com um buraco duplo proposital, para a regra das duas
   // faltas seguidas aparecer na tela em vez de ficar só no código.
   const dias: Dia[] = [];
@@ -47,12 +54,34 @@ function semear() {
       const sorte = (i * 7 + Number(h.id.slice(1)) * 13) % 10;
       marcados[h.id] = i === 0 ? false : sorte > 2;
     }
+    // Refeições do plano: adesão alta, com furos verossímeis.
+    const refeitas: Record<string, boolean> = {};
+    let proteina = 0;
+    for (const r of refeicoes) {
+      const aconteceu = (i * 3 + Number(r.id.slice(3)) * 5) % 10 > 2;
+      refeitas[r.id] = aconteceu;
+      if (aconteceu) proteina += r.proteinaG;
+    }
+
     dias.push({
       id: data,
       habitos: marcados,
       humor: 2 + ((i * 3) % 4),
       energia: 2 + ((i * 5) % 4),
-      peso: i % 3 === 0 ? 96 - i * 0.05 : undefined,
+      // Pesagem quase todo dia, descendo devagar: i é "dias atrás", então
+      // quanto mais antigo, mais pesado. O ruído diário é de propósito — é ele
+      // que faz a média móvel valer a pena na tela.
+      peso: i % 4 === 3 ? undefined
+        : Math.round((95.6 + i * 0.055 + ((i * 7) % 5) * 0.18) * 10) / 10,
+      // Cintura uma vez por semana, descendo mais rápido que o peso — é o
+      // caso de recomposição que o veredito precisa saber ler.
+      cinturaCm: i % 7 === 0 ? Math.round((97.5 + i * 0.09) * 10) / 10 : undefined,
+      sonoHoras: 5 + ((i * 3) % 4),
+      diaDeJogo: i % 4 === 1,
+      refeicoes: refeitas,
+      proteinaG: proteina,
+      aguaMl: 500 * (2 + (i % 3)),
+      alcoolDoses: i % 7 === 0 ? 2 : 0,
     });
   }
 
@@ -149,7 +178,7 @@ function semear() {
     { id: 'ta7', titulo: 'Fechar contrato da arena', prazo: somaDias(hoje(), -9), frenteId: 'f0', peso: 'normal', feita: true, feitaEm: agora, criadoEm: agora },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos };
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -175,7 +204,7 @@ function useColecaoFalsa<T extends { id: string }>(inicial: T[]) {
   };
 }
 
-const TELAS = ['hoje', 'agenda', 'dinheiro', 'habitos', 'treino', 'metas', 'briefing', 'ajustes'] as const;
+const TELAS = ['hoje', 'agenda', 'dinheiro', 'comida', 'habitos', 'treino', 'metas', 'briefing', 'ajustes'] as const;
 type Tela = typeof TELAS[number];
 
 function Bancada() {
@@ -194,6 +223,8 @@ function Bancada() {
   const rotinas = useColecaoFalsa<Rotina>(inicial.rotinas);
   const tarefas = useColecaoFalsa<Tarefa>(inicial.tarefas);
   const marcos = useColecaoFalsa<Marco>(inicial.marcos);
+  const refeicoes = useColecaoFalsa<Refeicao>(inicial.refeicoes);
+  const alimentos = useColecaoFalsa<AlimentoMeu>([]);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
   const porData = useMemo(() => {
@@ -205,17 +236,21 @@ function Bancada() {
   const dados = {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
-    frentes, eventos, rotinas, tarefas, marcos,
+    frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,
-    perfil: { nome: 'Prévia', custoFixoMensal: 3110, rendaFixa: 1750, pesoAlvo: 88, reservaAlvoMeses: 3 },
+    perfil: {
+      nome: 'Prévia', custoFixoMensal: 3110, rendaFixa: 1750, pesoAlvo: 88, reservaAlvoMeses: 3,
+      alturaCm: 178, idade: 30, sexo: 'm', nivelAtividade: 'alto', ritmoSemanal: -0.6,
+    },
     salvarPerfil: async () => {},
   } as unknown as DadosApp;
 
   const conteudo = {
     hoje: <Hoje dados={dados} irPara={(d) => setTela(d as Tela)} />,
     agenda: <Agenda dados={dados} />,
+    comida: <Nutricao dados={dados} />,
     dinheiro: <Financeiro dados={dados} />,
     habitos: <Habitos dados={dados} />,
     treino: <Treino dados={dados} />,

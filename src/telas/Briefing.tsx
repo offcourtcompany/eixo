@@ -11,6 +11,9 @@ import { jurosMensaisDe, saldoTotal, comparar } from '../logica/dividas';
 import { estadoDoHabito } from '../logica/habitos';
 import { tonelagem } from '../logica/treino';
 import {
+  calcularAlvos, seriePeso, tendencia as tendenciaPeso, vereditoSemanal, adesaoRecente,
+} from '../logica/nutricao';
+import {
   itensDoDia, separarAfazeres, diasDeAtraso, horasSemanaisPorFrente, dias as diasDaAgenda,
 } from '../logica/agenda';
 import { Cartao, TituloSecao, Botao, Legenda, AreaTexto, Aviso } from '../componentes/ui';
@@ -30,8 +33,10 @@ const PERGUNTAS: Record<Foco, string> = {
     + 'ordem as coisas desandam, o que costuma vir antes da queda, e qual ajuste pequeno de rotina teria '
     + 'o maior efeito. Se os dados não sustentam uma conclusão, diga isso em vez de inventar uma.',
   corpo:
-    'Analise o treino e o peso. Quero saber se o volume e a progressão estão coerentes com o objetivo, '
-    + 'onde está o risco de lesão dado que eu jogo muito esporte de raquete, e o que ajustar no programa.',
+    'Analise o treino, a comida e o peso juntos. Quero saber se o volume e a progressão estão coerentes com o objetivo, '
+    + 'onde está o risco de lesão dado que eu jogo muito esporte de raquete, se a proteína e a adesão do '
+    + 'plano alimentar sustentam esse treino, e o que ajustar. Se o ritmo de peso não bater com o combinado, '
+    + 'diga se o problema é o alvo ou a adesão antes de mandar cortar comida.',
 };
 
 export default function Briefing({ dados }: { dados: DadosApp }) {
@@ -225,6 +230,44 @@ function montarBriefing(dados: DadosApp, foco: Foco): string {
       + ult.id + ')' + (dados.perfil.pesoAlvo ? ', alvo ' + dados.perfil.pesoAlvo + ' kg' : ''));
   }
   l.push('');
+
+  // ── Nutrição
+  // Vai junto do treino de propósito: sem saber o que está entrando de comida,
+  // qualquer leitura sobre peso e desempenho é chute com cara de análise.
+  const seriePesagem = seriePeso(dados.porData, 60, data);
+  const t = tendenciaPeso(seriePesagem);
+  const pesoParaAlvo = t.mediaAtual ?? undefined;
+  const alvos = calcularAlvos(dados.perfil, pesoParaAlvo);
+  const refeicoes = dados.refeicoes.itens;
+  const adesao = adesaoRecente(refeicoes, dados.porData, 14, data);
+
+  if (!alvos.faltando.length || refeicoes.length) {
+    l.push('## Nutrição');
+    if (!alvos.faltando.length) {
+      l.push('- Alvo: ' + numero(alvos.calorias) + ' kcal/dia e ' + alvos.proteinaAlvo
+        + ' g de proteína (piso ' + alvos.proteinaPiso + ' g). Gasto estimado '
+        + numero(alvos.gasto) + ' kcal, basal ' + numero(alvos.tmb) + '.');
+    } else {
+      l.push('- Alvos não calculados: falta ' + alvos.faltando.join(', ') + '.');
+    }
+    if (t.mediaAtual !== null) {
+      const alvoRitmo = dados.perfil.ritmoSemanal ?? -(t.mediaAtual * 0.006);
+      l.push('- Peso pela média de 7 dias: ' + numero(t.mediaAtual, 1) + ' kg'
+        + (t.ritmo !== null ? ', variando ' + numero(t.ritmo, 2) + ' kg/semana' : '')
+        + ' (combinado: ' + numero(alvoRitmo, 2) + ' kg/semana). '
+        + t.pesagens + ' pesagem(ns) nos últimos 14 dias.');
+      const v = vereditoSemanal(t, alvoRitmo);
+      l.push('- Leitura da semana: ' + v.texto);
+    }
+    if (refeicoes.length) {
+      l.push('- Plano com ' + refeicoes.filter((r) => r.ativa).length + ' refeições. Adesão de '
+        + porcento(adesao.adesao) + ' em 14 dias, proteína média de ' + adesao.proteinaMedia + ' g.');
+    }
+    const alcool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+      .reduce((s, i) => s + (dados.porData.get(somaDias(data, -i))?.alcoolDoses || 0), 0);
+    if (alcool > 0) l.push('- Álcool: ' + alcool + ' dose(s) em 14 dias.');
+    l.push('');
+  }
 
   // ── Metas
   const trimestre = trimestreAtual();

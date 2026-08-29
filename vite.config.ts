@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {
+      // TEMPORÁRIO: inclui a bancada de prévia no build para publicar uma
+      // demonstração. Reverter depois — bancada não pertence à produção.
+      input: { index: 'index.html', preview: 'preview.html' },
       output: {
         /**
          * Recharts e companhia moram num chunk só, de propósito.

@@ -15,7 +15,15 @@ import { gerar, idGerado, dataNoMes, aConfirmarNoMes } from './recorrentes';
 import { itensDoDia, separarAfazeres, gradeDoMes, diasDeAtraso, horasSemanaisPorFrente } from './agenda';
 import { resultadoPorFrente, receitaPorModelo } from './frentes';
 import { resumoDoMes } from './financas';
-import type { Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento } from '../tipos';
+import {
+  tmb, calcularAlvos, seriePeso, tendencia, vereditoSemanal, adesaoDoDia,
+  tendenciaCintura, metaDeLiquido, sonoRecente, type Tendencia,
+} from './nutricao';
+import { normalizar, buscar, catalogo, calcular } from './alimentos';
+import { somaDias } from '../formato';
+import type {
+  Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
+} from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
 
@@ -226,5 +234,225 @@ describe('fechamento do mês', () => {
     expect(r.porOrigem.avulsa).toBe(2400);
     expect(r.saidasFixas).toBe(520);
     expect(r.sobra).toBe(4750 - 520);
+  });
+});
+
+describe('nutrição', () => {
+  const perfil = {
+    alturaCm: 178, idade: 30, sexo: 'm' as const, pesoAlvo: 88,
+    nivelAtividade: 'alto' as const, ritmoSemanal: -0.6,
+  };
+
+  it('calcula o basal pela Mifflin-St Jeor', () => {
+    // 10*96 + 6.25*178 - 5*30 + 5 = 1927.5
+    expect(tmb(96, 178, 30, 'm')).toBeCloseTo(1927.5, 1);
+    expect(tmb(96, 178, 30, 'f')).toBeCloseTo(1927.5 - 166, 1);
+  });
+
+  it('diz o que falta em vez de inventar número', () => {
+    const a = calcularAlvos({ pesoAlvo: 88 }, 96);
+    expect(a.faltando).toContain('altura');
+    expect(a.calorias).toBe(0);
+  });
+
+  it('ancora a proteína no peso-alvo, não no atual', () => {
+    const a = calcularAlvos(perfil, 96);
+    expect(a.proteinaAlvo).toBe(160);          // 88 × 1,8 arredondado a 5
+    expect(a.proteinaPiso).toBe(130);          // 88 × 1,5
+  });
+
+  it('aplica o déficit pedido sobre o gasto', () => {
+    const a = calcularAlvos(perfil, 96);
+    const esperado = a.gasto + (-0.6 * 7700) / 7;
+    expect(a.calorias).toBeCloseTo(Math.round(esperado), 0);
+    expect(a.freado).toBe(false);
+  });
+
+  it('freia o déficit que desceria abaixo do basal', () => {
+    const a = calcularAlvos({ ...perfil, ritmoSemanal: -2, nivelAtividade: 'leve' }, 96);
+    expect(a.freado).toBe(true);
+    expect(a.calorias).toBeGreaterThanOrEqual(a.tmb);
+  });
+
+  it('estima as semanas até o alvo', () => {
+    expect(calcularAlvos(perfil, 96).semanasAteAlvo).toBe(14);   // 8 kg a 0,6/semana
+  });
+
+  it('só calcula média móvel com três pesagens na janela', () => {
+    const porData = new Map<string, Dia>([
+      ['2026-08-28', { id: '2026-08-28', peso: 96 }],
+      ['2026-08-27', { id: '2026-08-27', peso: 96.4 }],
+    ]);
+    const s = seriePeso(porData, 3, '2026-08-28');
+    expect(s[s.length - 1].media).toBeUndefined();
+
+    porData.set('2026-08-26', { id: '2026-08-26', peso: 95.6 });
+    const s2 = seriePeso(porData, 3, '2026-08-28');
+    expect(s2[s2.length - 1].media).toBeCloseTo(96, 2);
+  });
+
+  it('mede o ritmo comparando média com média', () => {
+    const porData = new Map<string, Dia>();
+    // 15 dias descendo 0,1 kg/dia = 0,7 kg por semana.
+    for (let i = 0; i < 15; i++) {
+      const data = somaDias('2026-08-28', -i);
+      porData.set(data, { id: data, peso: 96 + i * 0.1 });
+    }
+    const t = tendencia(seriePeso(porData, 20, '2026-08-28'));
+    expect(t.ritmo).toBeCloseTo(-0.7, 1);
+    expect(t.pesagens).toBe(14);
+  });
+
+  it('pede mais pesagens antes de dar veredito', () => {
+    const v = vereditoSemanal({ ritmo: -0.6, mediaAtual: 96, mediaAnterior: 96.6, pesagens: 2 }, -0.6);
+    expect(v.tipo).toBe('sem-dado');
+  });
+
+  it('manda não mexer quando está no ritmo', () => {
+    const v = vereditoSemanal({ ritmo: -0.55, mediaAtual: 96, mediaAnterior: 96.55, pesagens: 8 }, -0.6);
+    expect(v.tipo).toBe('no-ritmo');
+  });
+
+  it('manda somar comida quando desce rápido demais', () => {
+    const v = vereditoSemanal({ ritmo: -1.4, mediaAtual: 95, mediaAnterior: 96.4, pesagens: 8 }, -0.6);
+    expect(v.tipo).toBe('rapido');
+  });
+
+  it('checa adesão antes de mandar cortar quando o peso sobe', () => {
+    const v = vereditoSemanal({ ritmo: 0.3, mediaAtual: 96.3, mediaAnterior: 96, pesagens: 8 }, -0.6);
+    expect(v.tipo).toBe('subindo');
+    expect(v.tipo !== 'sem-dado' && v.sugestao).toContain('proteína');
+  });
+
+  it('conta adesão do dia sobre as refeições ativas', () => {
+    const refeicao = (id: string, ativa = true): Refeicao => ({
+      id, nome: id, ancora: '', proteinaG: 30, piso: '', opcoes: [],
+      ordem: 1, ativa, criadoEm: agora,
+    });
+    const rs = [refeicao('a'), refeicao('b'), refeicao('c', false)];
+    const dia: Dia = { id: '2026-08-28', refeicoes: { a: true, b: false } };
+    const r = adesaoDoDia(rs, dia);
+    expect(r.total).toBe(2);        // a pausada não conta
+    expect(r.feitas).toBe(1);
+    expect(r.taxa).toBe(0.5);
+  });
+});
+
+describe('consulta de alimentos', () => {
+  const meu: AlimentoMeu = {
+    id: 'meu1', nome: 'Marmita do Zé', kcal: 150, proteina: 10, carbo: 16, gordura: 5,
+    porcaoNome: '1 marmita', porcaoG: 450, criadoEm: agora,
+  };
+
+  it('ignora acento e caixa na busca', () => {
+    expect(normalizar('Açaí Batido')).toBe('acai batido');
+    const achados = buscar('acai', catalogo([]));
+    expect(achados.some((a) => a.nome.includes('Açaí'))).toBe(true);
+  });
+
+  it('põe o que começa com o termo antes do que só contém', () => {
+    const achados = buscar('arroz', catalogo([]));
+    expect(achados[0].nome.toLowerCase().startsWith('arroz')).toBe(true);
+  });
+
+  it('os meus alimentos vêm antes dos da tabela', () => {
+    const lista = catalogo([meu]);
+    expect(lista[0].meuId).toBe('meu1');
+    expect(lista[0].porcoes[0]).toEqual({ nome: '1 marmita', g: 450 });
+  });
+
+  it('faz a regra de três da porção', () => {
+    const frango = catalogo([]).find((a) => a.nome === 'Peito de frango grelhado')!;
+    const p = calcular(frango, 200);
+    expect(p.kcal).toBe(330);
+    expect(p.proteina).toBeCloseTo(62, 1);
+  });
+
+  it('porção fracionada arredonda sem estourar', () => {
+    const ovo = catalogo([]).find((a) => a.nome === 'Ovo cozido')!;
+    const p = calcular(ovo, 50);
+    expect(p.kcal).toBe(73);
+    expect(p.proteina).toBeCloseTo(6.7, 1);
+  });
+
+  it('a tabela não tem alimento sem porção nem com caloria negativa', () => {
+    for (const a of catalogo([])) {
+      expect(a.porcoes.length).toBeGreaterThan(0);
+      expect(a.kcal).toBeGreaterThanOrEqual(0);
+      expect(a.proteina).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('os macros batem, grosso modo, com as calorias declaradas', () => {
+    // 4 kcal/g de proteína e carbo, 9 de gordura. Tolerância larga: a tabela é
+    // referência arredondada, e fibra e álcool não entram nessa conta.
+    for (const a of catalogo([])) {
+      if (a.grupo === 'Bebidas' || a.kcal < 30) continue;
+      const estimado = a.proteina * 4 + a.carbo * 4 + a.gordura * 9;
+      expect(Math.abs(estimado - a.kcal) / a.kcal).toBeLessThan(0.35);
+    }
+  });
+});
+
+describe('cintura, sono e líquido', () => {
+  const comPeso = (t: Partial<Tendencia> = {}): Tendencia =>
+    ({ ritmo: -0.2, mediaAtual: 96, mediaAnterior: 96.2, pesagens: 8, ...t });
+
+  it('a cintura veta o corte quando a balança está lenta mas a fita desce', () => {
+    const v = vereditoSemanal(comPeso(), -0.6, { ritmo: -0.3, medidas: 3 });
+    expect(v.tipo).toBe('recomposicao');
+    expect(v.tipo !== 'sem-dado' && v.sugestao).toContain('Não corte comida');
+  });
+
+  it('sem cintura medida, a mesma situação vira sugestão de cortar', () => {
+    const v = vereditoSemanal(comPeso(), -0.6);
+    expect(v.tipo).toBe('devagar');
+  });
+
+  it('uma medida só de cintura não basta para vetar', () => {
+    const v = vereditoSemanal(comPeso(), -0.6, { ritmo: -0.3, medidas: 1 });
+    expect(v.tipo).toBe('devagar');
+  });
+
+  it('queda de cintura pequena demais é erro de fita, não resultado', () => {
+    const v = vereditoSemanal(comPeso(), -0.6, { ritmo: -0.05, medidas: 3 });
+    expect(v.tipo).toBe('devagar');
+  });
+
+  it('peso subindo com cintura descendo também é recomposição', () => {
+    const v = vereditoSemanal(comPeso({ ritmo: 0.15 }), -0.6, { ritmo: -0.25, medidas: 3 });
+    expect(v.tipo).toBe('recomposicao');
+  });
+
+  it('descer rápido com cintura parada acende o alerta de massa magra', () => {
+    const v = vereditoSemanal(comPeso({ ritmo: -1.4 }), -0.6, { ritmo: 0, medidas: 3 });
+    expect(v.tipo).toBe('rapido');
+    expect(v.tipo !== 'sem-dado' && v.sugestao).toContain('não era gordura');
+  });
+
+  it('mede o ritmo da cintura em cm por semana', () => {
+    const serie = [
+      { data: '2026-08-01', cintura: 100 },
+      { data: '2026-08-29', cintura: 98 },
+    ];
+    const t = tendenciaCintura(serie);
+    expect(t.ritmo).toBeCloseTo(-0.5, 2);   // 2 cm em 28 dias
+    expect(t.atual).toBe(98);
+  });
+
+  it('meta de líquido cresce no dia de jogo', () => {
+    expect(metaDeLiquido(96)).toBe(3400);            // 35 ml/kg arredondado
+    expect(metaDeLiquido(96, 3)).toBe(3400 + 1800);
+  });
+
+  it('média de sono ignora noite sem registro', () => {
+    const porData = new Map<string, Dia>([
+      ['2026-08-28', { id: '2026-08-28', sonoHoras: 6 }],
+      ['2026-08-27', { id: '2026-08-27' }],
+      ['2026-08-26', { id: '2026-08-26', sonoHoras: 8 }],
+    ]);
+    const s = sonoRecente(porData, 5, '2026-08-28');
+    expect(s.media).toBe(7);
+    expect(s.noites).toBe(2);
   });
 });
