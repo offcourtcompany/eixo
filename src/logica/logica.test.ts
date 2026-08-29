@@ -32,6 +32,9 @@ import {
 } from './caixa';
 import { analisar, seguirOuCancelar, precoDeEquilibrio, resumoDaTemporada } from './evento';
 import {
+  ALIQUOTA_PADRAO, aliquotaDe, bruto, liquido, vencimentoDoDas, reservaDeImposto,
+} from './imposto';
+import {
   cargaDoTreino, cargaDaQuadra, quadraEstimada, serieDeCarga, zonaDe, lerCarga, recadoDaCarga,
 } from './carga';
 import {
@@ -45,7 +48,7 @@ import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../err
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
-  Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade, PlanoEvento,
+  Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade, PlanoEvento, Perfil,
   Treino as TreinoDoc2, Estudo as EstudoDoc2, Ideia as IdeiaDoc2,
 } from '../tipos';
 
@@ -790,9 +793,12 @@ describe('projeção de caixa', () => {
     id: 'o', empresa: 'Marca', etapa: 'proposta', valor: 10000, recorrente: false,
     criadoEm: agora, atualizadoEm: agora, ...p,
   });
+  // Sem imposto por padrão, pelo mesmo motivo do bloco de eventos: aqui se
+  // testa a mecânica da projeção. A guia tem bloco próprio.
   const base = {
     lancamentos: [] as Lancamento[], recorrentes: [] as Recorrente[],
     dividas: [] as Divida[], oportunidades: [] as Oportunidade[], data: D,
+    perfil: { aliquotaImposto: 0 } as Perfil,
   };
 
   it('a média do variável ignora o que já é fixo ou nasceu de um fixo', () => {
@@ -916,8 +922,11 @@ describe('projeção de caixa', () => {
 });
 
 describe('ponto de equilíbrio de evento', () => {
+  // Alíquota zero por padrão: os testes deste bloco são sobre a mecânica do
+  // ponto de equilíbrio, e misturar tributo em todos eles só tornaria cada
+  // número ilegível. O efeito do imposto tem bloco próprio, mais abaixo.
   const plano = (p: Partial<PlanoEvento> = {}): PlanoEvento => ({
-    id: 'e1', nome: 'Etapa', precoInscricao: 300, unidade: 'dupla',
+    id: 'e1', nome: 'Etapa', precoInscricao: 300, unidade: 'dupla', aliquotaImposto: 0,
     capacidade: 64, inscritos: 0, patrocinioContratado: 0,
     custos: [
       { id: 'c1', nome: 'Arbitragem', valor: 3000, tipo: 'fixo' },
@@ -1323,5 +1332,177 @@ describe('ideias embarcadas', () => {
     expect(IDEIAS_SUGERIDAS).toHaveLength(52);
     // Toda ideia diz onde encosta: aplicação vazia tornaria o módulo inútil.
     expect(IDEIAS_SUGERIDAS.every((i) => i.aplicacao.trim().length > 40)).toBe(true);
+  });
+});
+
+// ─────────────────────────────── imposto ───────────────────────────────
+
+describe('imposto', () => {
+  const D = '2026-08-15';
+  const lanc = (p: Partial<Lancamento>): Lancamento => ({
+    id: 'l', data: D, tipo: 'entrada', valor: 1000, categoria: 'Evento',
+    criadoEm: agora, ...p,
+  });
+
+  it('sem alíquota informada, presume a faixa inicial e diz que está presumindo', () => {
+    const r = reservaDeImposto([lanc({ valor: 20000 })], undefined, D);
+    expect(r.aliquota).toBe(ALIQUOTA_PADRAO);
+    expect(r.presumida).toBe(true);
+    expect(r.aGuardar).toBeCloseTo(1200, 6);
+  });
+
+  it('a alíquota do perfil manda, e a do evento manda na do perfil', () => {
+    expect(aliquotaDe({ aliquotaImposto: 0.155 })).toBe(0.155);
+    expect(aliquotaDe({ aliquotaImposto: 0.155 }, 0.06)).toBe(0.06);
+    expect(aliquotaDe(undefined)).toBe(ALIQUOTA_PADRAO);
+  });
+
+  it('embutir imposto no preço é dividir, não somar — e a diferença é o furo', () => {
+    expect(bruto(100, 0.06)).toBeCloseTo(106.3829787, 5);
+    expect(bruto(100, 0.06)).toBeGreaterThan(106);
+    // O caminho errado deixa a receita líquida abaixo do alvo.
+    expect(liquido(106, 0.06)).toBeLessThan(100);
+  });
+
+  it('entrada que não passou pelo CNPJ fica fora da base', () => {
+    const r = reservaDeImposto([
+      lanc({ id: 'a', valor: 20000 }),
+      lanc({ id: 'b', valor: 5000, foraDoCnpj: true }),
+      lanc({ id: 'c', valor: 900, tipo: 'saida' }),
+    ], { aliquotaImposto: 0.06 }, D);
+    expect(r.receitaDoMes).toBe(20000);
+    expect(r.foraDaBase).toBe(5000);
+    expect(r.aGuardar).toBeCloseTo(1200, 6);
+  });
+
+  it('a guia do mês vence no dia 20 do mês seguinte', () => {
+    expect(vencimentoDoDas('2026-08')).toBe('2026-09-20');
+    expect(vencimentoDoDas('2026-12')).toBe('2027-01-20');
+    const r = reservaDeImposto([lanc({ data: '2026-07-10', valor: 10000 })], { aliquotaImposto: 0.06 }, D);
+    expect(r.receitaAnterior).toBe(10000);
+    expect(r.aPagar).toBeCloseTo(600, 6);
+    expect(r.venceEm).toBe('2026-08-20');
+  });
+});
+
+describe('o imposto no ponto de equilíbrio', () => {
+  const plano = (p: Partial<PlanoEvento> = {}): PlanoEvento => ({
+    id: 'e1', nome: 'Etapa', precoInscricao: 300, unidade: 'dupla',
+    capacidade: 64, inscritos: 0, patrocinioContratado: 0,
+    custos: [
+      { id: 'c1', nome: 'Arbitragem', valor: 3000, tipo: 'fixo' },
+      { id: 'c2', nome: 'Estrutura', valor: 2000, tipo: 'fixo' },
+      { id: 'c3', nome: 'Kit do atleta', valor: 40, tipo: 'porInscrito' },
+    ],
+    status: 'confirmado', ordem: 1, criadoEm: agora, ...p,
+  });
+
+  it('o tributo cai sobre a receita e sobe o ponto de equilíbrio', () => {
+    const a = analisar(plano({ aliquotaImposto: 0.06 }));
+    expect(a.pontoSemImposto).toBe(20);           // ceil(5000 / 260)
+    expect(a.margemContribuicao).toBeCloseTo(242, 6);  // 300 × 0,94 − 40
+    expect(a.pontoDeEquilibrio).toBe(21);         // ceil(5000 / 242)
+    expect(a.pontoDeEquilibrio).toBeGreaterThan(a.pontoSemImposto);
+  });
+
+  it('o evento desenhado para empatar termina devendo o valor da guia', () => {
+    // 20 inscrições era o equilíbrio sem imposto. Com imposto, dá prejuízo.
+    const p = plano({ inscritos: 20 });
+    expect(analisar(p, { aliquotaImposto: 0 }).agora.lucro).toBeCloseTo(200, 6);
+    const com = analisar(p, { aliquotaImposto: 0.06 });
+    expect(com.agora.imposto).toBeCloseTo(360, 6);  // 6% de 6.000
+    expect(com.agora.lucro).toBeLessThan(0);
+  });
+
+  it('a cota assinada entra líquida — o patrocínio também é tributado', () => {
+    const a = analisar(plano({ patrocinioContratado: 10000, aliquotaImposto: 0.06 }));
+    expect(a.receitaGarantidaBruta).toBe(10000);
+    expect(a.receitaGarantida).toBeCloseTo(9400, 6);
+    expect(a.capitalEmRisco).toBe(0);   // 5.000 de fixo contra 9.400 líquidos
+  });
+
+  it('o preço de equilíbrio embute o imposto por dentro', () => {
+    const e = precoDeEquilibrio(plano({ aliquotaImposto: 0.06 }), 0.5);  // 32 duplas
+    const semImposto = 5000 / 32 + 40;
+    expect(e.preco).toBeCloseTo(semImposto / 0.94, 5);
+    // Somar 6% ao preço sem imposto não chegaria lá: é sempre menos.
+    expect(e.preco).toBeGreaterThan(semImposto * 1.06);
+  });
+
+  it('a temporada mostra o imposto que ninguém reserva', () => {
+    const r = resumoDaTemporada([plano({ aliquotaImposto: 0.06 })]);
+    expect(r.impostoLotado).toBeCloseTo(64 * 300 * 0.06, 6);
+  });
+});
+
+describe('o imposto na projeção de caixa', () => {
+  const D = '2026-08-01';
+  const lanc = (p: Partial<Lancamento>): Lancamento => ({
+    id: 'l', data: '2026-07-05', tipo: 'entrada', valor: 10000, categoria: 'Evento',
+    criadoEm: agora, ...p,
+  });
+  const base = {
+    lancamentos: [] as Lancamento[], recorrentes: [] as Recorrente[],
+    dividas: [] as Divida[], oportunidades: [] as Oportunidade[], data: D,
+    perfil: { aliquotaImposto: 0.06 } as Perfil,
+    saldoInicial: 20000,
+  };
+
+  it('a receita do mês passado vira guia no dia 20 deste mês', () => {
+    const p = projetarCaixa({ ...base, lancamentos: [lanc({ valor: 10000 })] });
+    const dia = p.dias.find((d) => d.data === '2026-08-20');
+    const guia = dia?.movimentos.find((m) => m.fonte === 'imposto');
+    expect(guia?.valor).toBeCloseTo(-600, 6);
+    expect(p.impostoPrevisto).toBeCloseTo(600, 6);
+  });
+
+  it('entrada fora do CNPJ não gera guia nenhuma', () => {
+    const p = projetarCaixa({
+      ...base,
+      lancamentos: [lanc({ valor: 10000, foraDoCnpj: true })],
+    });
+    expect(p.impostoPrevisto).toBe(0);
+  });
+
+  it('o imposto do funil vive só na linha pontilhada', () => {
+    const p = projetarCaixa({
+      ...base,
+      oportunidades: [{
+        id: 'o', empresa: 'Marca', etapa: 'proposta', valor: 20000, recorrente: false,
+        previsaoEm: '2026-08-10', criadoEm: agora, atualizadoEm: agora,
+      }],
+    });
+    const fim = p.dias[p.dias.length - 1];
+    // A linha base não conta nem a entrada do funil nem o imposto dela.
+    expect(p.impostoPrevisto).toBe(0);
+    expect(fim.saldo).toBeCloseTo(base.saldoInicial, 6);
+    // A pontilhada conta as duas coisas: entrada ponderada menos a guia.
+    const guia = p.dias.find((d) => d.data === '2026-09-20')
+      ?.movimentos.find((m) => m.fonte === 'impostoFunil');
+    expect(guia).toBeTruthy();
+    expect(fim.comFunil).toBeCloseTo(base.saldoInicial + p.entradasDoFunil * 0.94, 6);
+  });
+
+  it('alíquota zero não inventa movimento', () => {
+    const p = projetarCaixa({
+      ...base, perfil: { aliquotaImposto: 0 },
+      lancamentos: [lanc({ valor: 10000 })],
+    });
+    expect(p.impostoPrevisto).toBe(0);
+    expect(p.dias.every((d) => d.movimentos.every((m) => m.fonte !== 'imposto'))).toBe(true);
+  });
+
+  it('a sobra mensal já vem depois do imposto', () => {
+    const r = ritmoMensal({
+      ...base,
+      recorrentes: [
+        { id: 'a', nome: 'Arena', tipo: 'entrada', valor: 5000, categoria: 'Gestão',
+          diaDoMes: 5, fixo: false, ativo: true, criadoEm: agora },
+        { id: 'b', nome: 'Aluguel', tipo: 'saida', valor: 2000, categoria: 'Moradia',
+          diaDoMes: 10, fixo: true, ativo: true, criadoEm: agora },
+      ],
+    });
+    expect(r.imposto).toBeCloseTo(300, 6);
+    expect(r.sobra).toBeCloseTo(5000 - 300 - 2000, 6);
   });
 });

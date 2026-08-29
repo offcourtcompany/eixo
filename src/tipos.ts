@@ -39,6 +39,16 @@ export interface Lancamento {
    *  o compromisso existe, confirmado ou não. Confirmar serve para você ajustar
    *  o valor real do mês, que quase nunca bate na vírgula. */
   aConfirmar?: boolean;
+  /**
+   * Entrada que não passou pelo CNPJ e por isso fica fora da base do imposto:
+   * transferência entre as suas contas, empréstimo, venda de um bem seu.
+   *
+   * O padrão é o contrário — entrada não marcada **conta** como receita da
+   * empresa. Assumir tributável e deixar você tirar é o erro seguro: quem
+   * esquece de marcar guarda dinheiro a mais, e quem esquece do inverso
+   * descobre no dia 20.
+   */
+  foraDoCnpj?: boolean;
 }
 
 /**
@@ -57,6 +67,8 @@ export interface Recorrente {
   categoria: string;
   diaDoMes: number;          // 1–31; meses curtos caem no último dia
   origem?: OrigemReceita;    // só entradas
+  /** Entrada que não passa pelo CNPJ — fica fora da base do imposto. */
+  foraDoCnpj?: boolean;
   fixo: boolean;             // saídas: conta como custo fixo
   ativo: boolean;
   /** Último mês (YYYY-MM) já gerado. Impede ressuscitar o que você apagou. */
@@ -244,6 +256,14 @@ export interface Perfil {
   custoFixoMensal?: number;
   reservaAlvoMeses?: number;
   reservaAtual?: number;
+  /**
+   * A alíquota efetiva que sai sobre a receita bruta, em fração (0,06 = 6%).
+   *
+   * Vem do seu contador, não de uma tabela dentro do app: no Simples ela sobe
+   * com o faturamento dos últimos doze meses e muda de anexo pelo Fator R.
+   * Enquanto estiver vazia o app usa 6% e diz na tela que está presumindo.
+   */
+  aliquotaImposto?: number;
   atualizadoEm?: string;
 }
 
@@ -655,6 +675,14 @@ export interface PlanoEvento {
   patrocinioEmNegociacao?: number;
   /** Bar, quadra, camisa: receita que não depende de inscrição. */
   outrasReceitas?: number;
+  /**
+   * A alíquota deste evento, se for diferente da sua padrão. Fração.
+   *
+   * Existe porque nem toda receita do evento passa pela mesma porta — cota de
+   * patrocínio com nota e inscrição por plataforma podem cair em regimes
+   * diferentes. Vazio = usa a do perfil.
+   */
+  aliquotaImposto?: number;
   custos: CustoEvento[];
   status: 'rascunho' | 'confirmado' | 'realizado' | 'cancelado';
   nota?: string;

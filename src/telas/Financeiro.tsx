@@ -17,6 +17,7 @@ import { BlocoPorFrente, BlocoModelos } from '../componentes/PorFrente';
 import { BlocoPatrimonio } from '../componentes/Patrimonio';
 import { BlocoCaixa } from '../componentes/Caixa';
 import { BlocoEventos } from '../componentes/Eventos';
+import { BlocoImposto } from '../componentes/Imposto';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
   Folha, Vazio, Barra, Aviso, Legenda, Pilula,
@@ -38,6 +39,9 @@ export default function Financeiro({ dados }: { dados: DadosApp }) {
           o passado, e a decisão que você toma ao abrir esta tela é sobre o que
           vem. */}
       <BlocoCaixa dados={dados} />
+      {/* Logo depois da projeção porque é a mesma pergunta: quanto do que existe
+          é realmente meu. */}
+      <BlocoImposto dados={dados} />
       <GraficoDeMeses serie={serie} pisoFixo={pisoFixo} />
       <BlocoModelos dados={dados} mes={mes} />
       <BlocoPorFrente dados={dados} mes={mes} />
@@ -570,6 +574,7 @@ function FormularioLancamento({
   const [data, setData] = useState(hoje());
   const [origem, setOrigem] = useState<'fixa' | 'recorrente' | 'avulsa'>('avulsa');
   const [fixo, setFixo] = useState(false);
+  const [foraDoCnpj, setForaDoCnpj] = useState(false);
   const [frenteId, setFrenteId] = useState<string | undefined>();
   const [chave, setChave] = useState('');
 
@@ -583,6 +588,7 @@ function FormularioLancamento({
     setData(lancamento?.data || (mes === mesAtual() ? hoje() : mes + '-01'));
     setOrigem(lancamento?.origem || 'avulsa');
     setFixo(Boolean(lancamento?.fixo));
+    setForaDoCnpj(Boolean(lancamento?.foraDoCnpj));
     setFrenteId(lancamento?.frenteId);
   }
   if (!aberta && chave) setChave('');
@@ -601,7 +607,7 @@ function FormularioLancamento({
     };
     await dados.lancamentos.salvar(
       tipo === 'entrada'
-        ? { ...base, origem, fixo: false }
+        ? { ...base, origem, fixo: false, foraDoCnpj }
         : { ...base, fixo, origem: 'avulsa' as const },
     );
     aoFechar();
@@ -638,7 +644,7 @@ function FormularioLancamento({
           </Campo>
         </div>
 
-        {tipo === 'entrada' ? (
+        {tipo === 'entrada' && (
           <Campo rotulo="De onde veio"
             dica="Fixa e recorrente contam como receita previsível. Avulsa é o evento que não se repete sozinho.">
             <div className="grid grid-cols-3 gap-2">
@@ -651,6 +657,24 @@ function FormularioLancamento({
               ))}
             </div>
           </Campo>
+        )}
+
+        {/* Assumir tributável e deixar você tirar é o erro seguro: quem esquece
+            de marcar guarda dinheiro a mais; quem esquece do contrário
+            descobre no dia 20. */}
+        {tipo === 'entrada' ? (
+          <button onClick={() => setForaDoCnpj(!foraDoCnpj)}
+            className={'flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition '
+              + (foraDoCnpj ? 'border-ouro/50' : 'border-borda bg-superficie2')}>
+            <span className={'flex h-5 w-5 items-center justify-center rounded-md border '
+              + (foraDoCnpj ? 'border-ouro bg-ouro text-fundo' : 'border-borda2')}>{foraDoCnpj ? '✓' : ''}</span>
+            <span>
+              <span className="block text-sm">Não passou pelo CNPJ</span>
+              <span className="block text-[11px] text-fraco">
+                Transferência sua, empréstimo, venda de algo pessoal — fica fora da base do imposto
+              </span>
+            </span>
+          </button>
         ) : (
           <button onClick={() => setFixo(!fixo)}
             className={'flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition '

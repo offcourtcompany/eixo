@@ -358,6 +358,7 @@ function Bancada() {
     salvarDia: diasColecao.salvar,
     perfil: {
       nome: 'Prévia', custoFixoMensal: 3110, rendaFixa: 1750, pesoAlvo: 88, reservaAlvoMeses: 3,
+      aliquotaImposto: 0.06,
       alturaCm: 178, idade: 30, sexo: 'm', nivelAtividade: 'alto', ritmoSemanal: -0.6,
     },
     salvarPerfil: async () => {},

@@ -23,12 +23,18 @@
  *    zero e a projeção se declara não confiável em vez de chutar um número
  *    redondo que pareceria sério.
  */
-import type { Lancamento, Recorrente, Divida, Oportunidade } from '../tipos';
-import { hoje, somaDias, mesDe, mesRelativo } from '../formato';
+import type { Lancamento, Recorrente, Divida, Oportunidade, Perfil } from '../tipos';
+import { hoje, somaDias, mesDe, mesRelativo, rotuloMes } from '../formato';
 import { dataNoMes } from './recorrentes';
 import { ETAPAS, emAndamento } from './funil';
+import { aliquotaDe, imposto, vencimentoDoDas } from './imposto';
 
-export type FonteMovimento = 'lancado' | 'fixo' | 'divida' | 'variavel' | 'funil';
+export type FonteMovimento =
+  | 'lancado' | 'fixo' | 'divida' | 'variavel' | 'funil'
+  /** A guia do mês seguinte, sobre a receita contratada. */
+  | 'imposto'
+  /** A guia sobre a receita que ainda é só funil — só afeta a linha pontilhada. */
+  | 'impostoFunil';
 
 export interface MovimentoPrevisto {
   data: string;
@@ -36,6 +42,8 @@ export interface MovimentoPrevisto {
   valor: number;
   rotulo: string;
   fonte: FonteMovimento;
+  /** Entrada que compõe a base do imposto do mês. */
+  tributavel?: boolean;
 }
 
 export interface DiaDeCaixa {
@@ -69,6 +77,10 @@ export interface Projecao {
   /** As mínimas de dívida entraram? Não entram se já existirem como fixo. */
   incluiuDividas: boolean;
   entradasDoFunil: number;
+  /** A alíquota usada sobre a receita bruta, em fração. */
+  aliquota: number;
+  /** O imposto que sai da linha base dentro da janela — receita já contratada. */
+  impostoPrevisto: number;
   /** Oportunidades abertas sem previsão de entrada — não entram em nada. */
   semPrevisao: number;
 }
@@ -78,6 +90,8 @@ export interface EntradaProjecao {
   recorrentes: Recorrente[];
   dividas: Divida[];
   oportunidades: Oportunidade[];
+  /** De onde sai a alíquota do imposto. Sem ele, o app presume a faixa inicial. */
+  perfil?: Perfil;
   /** A reserva atual do perfil. Sem ela a projeção vira variação de caixa. */
   saldoInicial?: number;
   horizonte?: number;
@@ -138,6 +152,7 @@ export function movimentosPrevistos(e: EntradaProjecao): MovimentoPrevisto[] {
       valor: l.tipo === 'entrada' ? l.valor : -l.valor,
       rotulo: l.descricao || l.categoria,
       fonte: 'lancado',
+      tributavel: l.tipo === 'entrada' && !l.foraDoCnpj,
     });
   }
 
@@ -156,6 +171,7 @@ export function movimentosPrevistos(e: EntradaProjecao): MovimentoPrevisto[] {
         valor: r.tipo === 'entrada' ? r.valor : -r.valor,
         rotulo: r.nome,
         fonte: 'fixo',
+        tributavel: r.tipo === 'entrada' && !r.foraDoCnpj,
       });
     }
   }
@@ -169,6 +185,7 @@ export function movimentosPrevistos(e: EntradaProjecao): MovimentoPrevisto[] {
       valor: o.valor * ETAPAS[o.etapa].prob,
       rotulo: `${o.empresa} (ponderado)`,
       fonte: 'funil',
+      tributavel: true,
     });
   }
 
@@ -194,12 +211,78 @@ export function dividaDiluida(dividas: Divida[], recorrentes: Recorrente[]) {
   return { incluir: !jaNosFixos && mensal > 0, mensal: jaNosFixos ? 0 : mensal, diaria: jaNosFixos ? 0 : mensal / 30 };
 }
 
+/**
+ * A guia do imposto, saindo no dia em que ela sai de verdade.
+ *
+ * Esta é a correção de um defeito que a projeção tinha desde o primeiro dia:
+ * ela tratava faturado como recebido e inteiro. Não é. Do que entra numa
+ * temporada de eventos, uma fatia é do governo, e ela sai **no dia 20 do mês
+ * seguinte** — ou seja, o mês bom cobra a conta quando o caixa já voltou ao
+ * normal. É assim que produtor de evento quebra depois da temporada boa, e é
+ * exatamente o tipo de penhasco que uma projeção de noventa dias existe para
+ * mostrar antes.
+ *
+ * Duas guias saem daqui, e não uma, pelo mesmo motivo das duas linhas do
+ * gráfico: o imposto da receita contratada é dívida certa e entra na linha
+ * cheia; o da receita que ainda é só funil só existe se o funil virar dinheiro,
+ * então acompanha a linha pontilhada. Misturar faria a linha base descer por
+ * causa de uma receita que ela nem contou.
+ */
+export function impostosPrevistos(
+  e: EntradaProjecao,
+  movimentos: MovimentoPrevisto[],
+): MovimentoPrevisto[] {
+  const aliq = aliquotaDe(e.perfil);
+  if (aliq <= 0) return [];
+
+  const inicio = e.data || hoje();
+  const fim = somaDias(inicio, e.horizonte ?? 90);
+
+  const contratada = new Map<string, number>();
+  const doFunil = new Map<string, number>();
+  const somar = (m: Map<string, number>, mes: string, v: number) => m.set(mes, (m.get(mes) || 0) + v);
+
+  // A receita que já entrou e cuja guia ainda não venceu. É o pedaço que mais
+  // surpreende: o mês passado já gerou imposto e ele ainda não saiu.
+  for (const l of e.lancamentos) {
+    if (l.tipo !== 'entrada' || l.foraDoCnpj || l.data > inicio) continue;
+    somar(contratada, mesDe(l.data), l.valor);
+  }
+
+  // E a receita projetada. Lançamentos futuros já chegam aqui como movimento.
+  for (const m of movimentos) {
+    if (!m.tributavel || m.valor <= 0) continue;
+    somar(m.fonte === 'funil' ? doFunil : contratada, mesDe(m.data), m.valor);
+  }
+
+  const guias: MovimentoPrevisto[] = [];
+  const emitir = (base: Map<string, number>, fonte: FonteMovimento) => {
+    for (const [mes, receita] of base) {
+      const vence = vencimentoDoDas(mes);
+      if (vence <= inicio || vence > fim) continue;
+      guias.push({
+        data: vence,
+        valor: -imposto(receita, aliq),
+        rotulo: `Imposto da receita de ${rotuloMes(mes)}`,
+        fonte,
+      });
+    }
+  };
+  emitir(contratada, 'imposto');
+  emitir(doFunil, 'impostoFunil');
+
+  return guias;
+}
+
 export function projetarCaixa(e: EntradaProjecao): Projecao {
   const inicio = e.data || hoje();
   const horizonte = e.horizonte ?? 90;
   const variavel = gastoVariavel(e.lancamentos, inicio);
   const divida = dividaDiluida(e.dividas, e.recorrentes);
   const movimentos = movimentosPrevistos(e);
+  const guias = impostosPrevistos(e, movimentos);
+  movimentos.push(...guias);
+  movimentos.sort((a, b) => a.data.localeCompare(b.data));
 
   const porDia = new Map<string, MovimentoPrevisto[]>();
   for (const m of movimentos) {
@@ -231,9 +314,10 @@ export function projetarCaixa(e: EntradaProjecao): Projecao {
     saidas += drenoDiario;
 
     for (const m of doDia) {
-      if (m.fonte === 'funil') {
+      // O funil e o imposto que ele gera vivem só na linha pontilhada.
+      if (m.fonte === 'funil' || m.fonte === 'impostoFunil') {
         comFunil += m.valor;
-        entradasDoFunil += m.valor;
+        if (m.fonte === 'funil') entradasDoFunil += m.valor;
         continue;
       }
       saldo += m.valor;
@@ -263,6 +347,10 @@ export function projetarCaixa(e: EntradaProjecao): Projecao {
     confiavel: variavel.confiavel,
     incluiuDividas: divida.incluir,
     entradasDoFunil,
+    aliquota: aliquotaDe(e.perfil),
+    impostoPrevisto: guias
+      .filter((g) => g.fonte === 'imposto')
+      .reduce((soma, g) => soma - g.valor, 0),
     semPrevisao: e.oportunidades.filter((o) => emAndamento(o) && !o.previsaoEm).length,
   };
 }
@@ -287,6 +375,11 @@ export function porSemana(p: Projecao) {
 export function ritmoMensal(e: EntradaProjecao) {
   const ativos = e.recorrentes.filter((r) => r.ativo);
   const entradaFixa = ativos.filter((r) => r.tipo === 'entrada').reduce((s, r) => s + r.valor, 0);
+  // Só a parte que passa pelo CNPJ gera guia. O resto entra inteiro.
+  const tributavel = ativos
+    .filter((r) => r.tipo === 'entrada' && !r.foraDoCnpj)
+    .reduce((s, r) => s + r.valor, 0);
+  const tributo = imposto(tributavel, aliquotaDe(e.perfil));
   const saidaFixa = ativos.filter((r) => r.tipo === 'saida').reduce((s, r) => s + r.valor, 0);
   const variavel = gastoVariavel(e.lancamentos, e.data || hoje()).mensal;
   const divida = dividaDiluida(e.dividas, e.recorrentes).mensal;
@@ -295,6 +388,7 @@ export function ritmoMensal(e: EntradaProjecao) {
     saidaFixa,
     variavel,
     divida,
-    sobra: entradaFixa - saidaFixa - variavel - divida,
+    imposto: tributo,
+    sobra: entradaFixa - tributo - saidaFixa - variavel - divida,
   };
 }

@@ -17,6 +17,7 @@ import type { DadosApp } from '../dadosApp';
 import type { PlanoEvento, CustoEvento } from '../tipos';
 import { moeda, moedaCurta, porcento, numero, dataCurta } from '../formato';
 import { analisar, precoDeEquilibrio, resumoDaTemporada, seguirOuCancelar } from '../logica/evento';
+import { liquido } from '../logica/imposto';
 import {
   gerarChecklist, estadoDoChecklist, riscoDoEvento,
   type EstadoDoChecklist, type ItemComPrazo,
@@ -38,7 +39,8 @@ export function BlocoEventos({ dados }: { dados: DadosApp }) {
   const [expandido, setExpandido] = useState<string | null>(null);
 
   const planos = dados.planos.itens;
-  const temporada = useMemo(() => resumoDaTemporada(planos), [planos]);
+  const perfil = dados.perfil;
+  const temporada = useMemo(() => resumoDaTemporada(planos, perfil), [planos, perfil]);
 
   function abrir(p: PlanoEvento | null) { setEditando(p); setAberta(true); }
 
@@ -105,9 +107,10 @@ function LinhaDoEvento({
   plano: PlanoEvento; dados: DadosApp; expandido: boolean;
   aoExpandir: () => void; aoEditar: () => void;
 }) {
-  const a = useMemo(() => analisar(plano), [plano]);
-  const preco = useMemo(() => precoDeEquilibrio(plano), [plano]);
-  const decisao = useMemo(() => seguirOuCancelar(plano), [plano]);
+  const perfil = dados.perfil;
+  const a = useMemo(() => analisar(plano, perfil), [plano, perfil]);
+  const preco = useMemo(() => precoDeEquilibrio(plano, 0.8, perfil), [plano, perfil]);
+  const decisao = useMemo(() => seguirOuCancelar(plano, plano.inscritos, perfil), [plano, perfil]);
   const lista = useMemo(() => estadoDoChecklist(plano), [plano]);
 
   const pe = a.pontoDeEquilibrio;
@@ -171,7 +174,7 @@ function LinhaDoEvento({
             <Metrica rotulo="Margem por inscrição" tamanho="medio"
               valor={moedaCurta(a.margemContribuicao)}
               cor={a.margemContribuicao <= 0 ? 'text-perigo' : 'text-creme'}
-              detalhe={'preço ' + moedaCurta(plano.precoInscricao) + ' − custo ' + moedaCurta(a.custoPorInscrito)} />
+              detalhe={'de ' + moedaCurta(plano.precoInscricao) + ', depois de imposto e custo'} />
             <Metrica rotulo="Capital exposto" tamanho="medio"
               valor={moedaCurta(a.capitalEmRisco)}
               cor={a.capitalEmRisco > 0 ? 'text-perigo' : 'text-verde'}
@@ -180,12 +183,20 @@ function LinhaDoEvento({
 
           <div>
             <div className="rotulo mb-2 text-fraco">Se lotar pela metade, três quartos, ou tudo</div>
+            <div className="mb-1 flex items-center gap-3 text-[11px] text-fraco">
+              <span className="w-12 shrink-0">ocup.</span>
+              <span className="w-16 shrink-0">{plano.unidade}</span>
+              <span className="flex-1">receita − imposto − custo</span>
+              <span className="shrink-0">sobra</span>
+            </div>
             <div className="space-y-1">
               {a.cenarios.map((c) => (
                 <div key={c.inscritos} className="flex items-center gap-3 text-[13px]">
                   <span className="tabular w-12 shrink-0 text-fraco">{porcento(c.ocupacao)}</span>
                   <span className="tabular w-16 shrink-0 text-suave">{numero(c.inscritos)}</span>
-                  <span className="flex-1 text-fraco">{moedaCurta(c.receita)} − {moedaCurta(c.custo)}</span>
+                  <span className="flex-1 text-fraco">
+                    {moedaCurta(c.receita)} − {moedaCurta(c.imposto)} − {moedaCurta(c.custo)}
+                  </span>
                   <span className={'tabular shrink-0 ' + (c.lucro < 0 ? 'text-perigo' : 'text-verde')}>
                     {c.lucro < 0 ? '−' : '+'}{moedaCurta(Math.abs(c.lucro))}
                   </span>
@@ -193,6 +204,23 @@ function LinhaDoEvento({
               ))}
             </div>
           </div>
+
+          {a.aliquota > 0 && (
+            <Legenda>
+              Com <b>{porcento(a.aliquota)}</b> de imposto sobre a receita bruta, cada{' '}
+              {plano.unidade} de {moeda(plano.precoInscricao)} entra como{' '}
+              <b>{moeda(liquido(plano.precoInscricao, a.aliquota))}</b> — o tributo cai sobre o que
+              circula, não sobre o que sobra.
+              {Number.isFinite(a.pontoDeEquilibrio) && a.pontoDeEquilibrio > a.pontoSemImposto && (
+                <> Isso move o equilíbrio de {numero(a.pontoSemImposto)} para{' '}
+                  <b>{numero(a.pontoDeEquilibrio)}</b> {plano.unidade}s.</>
+              )}
+              {a.impostoPresumido && (
+                <> A alíquota é o padrão do app — primeira faixa do Anexo III. A sua real sobe com o
+                  faturamento de doze meses: peça o número ao contador e escreva em Ajustes.</>
+              )}
+            </Legenda>
+          )}
 
           {a.margemNegativa && (
             <Aviso>

@@ -116,6 +116,7 @@ function FormularioRecorrente({
   const [categoria, setCategoria] = useState('');
   const [dia, setDia] = useState('5');
   const [origem, setOrigem] = useState<'fixa' | 'recorrente' | 'avulsa'>('fixa');
+  const [foraDoCnpj, setForaDoCnpj] = useState(false);
   const [chave, setChave] = useState('');
 
   const idAtual = recorrente?.id || 'novo';
@@ -127,6 +128,7 @@ function FormularioRecorrente({
     setCategoria(recorrente?.categoria || '');
     setDia(String(recorrente?.diaDoMes ?? 5));
     setOrigem(recorrente?.origem || 'fixa');
+    setForaDoCnpj(Boolean(recorrente?.foraDoCnpj));
   }
   if (!aberta && chave) setChave('');
 
@@ -145,7 +147,7 @@ function FormularioRecorrente({
     };
     await dados.recorrentes.salvar(
       tipo === 'entrada'
-        ? { ...base, origem, fixo: false }
+        ? { ...base, origem, fixo: false, foraDoCnpj }
         : { ...base, fixo: true, origem: 'avulsa' as const },
     );
     aoFechar();
@@ -198,6 +200,19 @@ function FormularioRecorrente({
               ))}
             </div>
           </Campo>
+        )}
+
+        {tipo === 'entrada' && (
+          <button onClick={() => setForaDoCnpj(!foraDoCnpj)}
+            className={'flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition '
+              + (foraDoCnpj ? 'border-ouro/50' : 'border-borda bg-superficie2')}>
+            <span className={'flex h-5 w-5 items-center justify-center rounded-md border '
+              + (foraDoCnpj ? 'border-ouro bg-ouro text-fundo' : 'border-borda2')}>{foraDoCnpj ? '✓' : ''}</span>
+            <span>
+              <span className="block text-sm">Não passa pelo CNPJ</span>
+              <span className="block text-[11px] text-fraco">Fica fora da base do imposto na projeção</span>
+            </span>
+          </button>
         )}
 
         <Aviso tom="info">

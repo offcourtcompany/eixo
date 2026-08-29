@@ -27,6 +27,24 @@ export default function Ajustes({ dados, email, previa }: { dados: DadosApp; ema
   const p = dados.perfil;
   const [salvo, setSalvo] = useState(false);
 
+  /**
+   * A alíquota é digitada em porcento e guardada em fração.
+   *
+   * Campo em branco não grava nada de propósito: vazio quer dizer 'ninguém me
+   * disse ainda', e é isso que faz o app avisar que está presumindo. Gravar
+   * zero aqui significaria outra coisa — que não há imposto — e é uma resposta
+   * legítima, mas ela tem que ser digitada.
+   */
+  async function gravarAliquota(valor: string) {
+    const texto = valor.trim().replace(',', '.');
+    if (!texto) return;
+    const n = Number(texto);
+    if (!Number.isFinite(n) || n < 0) return;
+    await dados.salvarPerfil({ aliquotaImposto: Math.min(90, n) / 100 });
+    setSalvo(true);
+    setTimeout(() => setSalvo(false), 1500);
+  }
+
   async function gravar(campo: string, valor: string) {
     await dados.salvarPerfil({ [campo]: campo === 'nome' ? valor : Number(valor) || 0 });
     setSalvo(true);
@@ -71,6 +89,13 @@ export default function Ajustes({ dados, email, previa }: { dados: DadosApp; ema
                 onBlur={(e) => void gravar('reservaAlvoMeses', e.target.value)} placeholder="3" />
             </Campo>
           </div>
+
+          <Campo rotulo="Alíquota de imposto (%)"
+            dica="A efetiva que sai sobre a receita bruta — não sobre o lucro. Quem tem esse número é o seu contador: no Simples ela sobe com o faturamento dos últimos doze meses e muda de anexo pelo Fator R. Em branco, o app usa 6% e avisa que está presumindo, e todo ponto de equilíbrio de evento sai com esse chute.">
+            <Entrada type="number" inputMode="decimal" step="0.01"
+              defaultValue={p.aliquotaImposto !== undefined ? p.aliquotaImposto * 100 : ''}
+              onBlur={(e) => void gravarAliquota(e.target.value)} placeholder="6" />
+          </Campo>
 
           {salvo && <Aviso tom="bom">Salvo.</Aviso>}
         </div>

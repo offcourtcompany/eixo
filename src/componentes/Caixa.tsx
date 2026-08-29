@@ -40,9 +40,10 @@ export function BlocoCaixa({ dados }: { dados: DadosApp }) {
     recorrentes: dados.recorrentes.itens,
     dividas: dados.dividas.itens,
     oportunidades: dados.oportunidades.itens,
+    perfil: dados.perfil,
     saldoInicial,
   }), [dados.lancamentos.itens, dados.recorrentes.itens, dados.dividas.itens,
-    dados.oportunidades.itens, saldoInicial]);
+    dados.oportunidades.itens, dados.perfil, saldoInicial]);
 
   const p = useMemo(() => projetarCaixa(entrada), [entrada]);
   const ritmo = useMemo(() => ritmoMensal(entrada), [entrada]);
@@ -127,11 +128,18 @@ export function BlocoCaixa({ dados }: { dados: DadosApp }) {
       {/* O ritmo: de onde a inclinação da linha vem, em quatro números. Sem
           isto o gráfico é uma opinião; com isto ele é uma conta que dá para
           conferir de cabeça. */}
-      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-borda2 pt-4 text-[13px] sm:grid-cols-4">
+      <div className={'mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-borda2 pt-4 text-[13px] '
+        + (ritmo.imposto > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4')}>
         <div>
           <div className="rotulo text-fraco">Entra fixo</div>
           <div className="tabular mt-1 text-verde">{moedaCurta(ritmo.entradaFixa)}</div>
         </div>
+        {ritmo.imposto > 0 && (
+          <div>
+            <div className="rotulo text-fraco">Imposto</div>
+            <div className="tabular mt-1 text-creme">−{moedaCurta(ritmo.imposto)}</div>
+          </div>
+        )}
         <div>
           <div className="rotulo text-fraco">Sai fixo</div>
           <div className="tabular mt-1 text-creme">−{moedaCurta(ritmo.saidaFixa)}</div>
