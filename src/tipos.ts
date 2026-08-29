@@ -325,6 +325,15 @@ export interface Tarefa {
   prazo?: string;            // YYYY-MM-DD
   /** 4DX: `chave` é a que move o placar. Poucas por semana, ou não significa nada. */
   peso: 'normal' | 'chave';
+  /**
+   * Quanto tempo isto leva, em minutos.
+   *
+   * Opcional, e a capacidade da semana assume um padrão quando falta. Existe
+   * porque a lista de afazeres é a parte da semana que não aparece no
+   * calendário e mesmo assim a consome inteira — sem uma estimativa, ainda que
+   * grosseira, não dá para dizer se a semana cabe.
+   */
+  estimativaMin?: number;
   feita: boolean;
   feitaEm?: string;
   nota?: string;

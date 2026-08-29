@@ -27,6 +27,7 @@ import {
   Cartao, TituloSecao, Botao, Campo, Entrada, AreaTexto, Selecao,
   Folha, Vazio, Legenda, Pilula,
 } from '../componentes/ui';
+import { BlocoCapacidade } from '../componentes/Capacidade';
 
 const SIGLAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -162,6 +163,10 @@ export default function Agenda({ dados }: { dados: DadosApp }) {
           </div>
         )}
       </Cartao>
+
+      {/* Antes da lista de afazeres, e não depois: a pergunta "cabe?" precisa
+          vir antes de você decidir marcar mais uma coisa. */}
+      <BlocoCapacidade dados={dados} />
 
       <BlocoAfazeres dados={dados} frenteId={frenteId} porId={porId}
         aoNovo={() => setForm({ tipo: 'tarefa', item: null })}
@@ -669,6 +674,7 @@ function FormularioTarefa({
     prazo: tarefa?.prazo || '',
     frenteId: tarefa?.frenteId,
     peso: tarefa?.peso || ('normal' as 'normal' | 'chave'),
+    estimativaMin: tarefa?.estimativaMin ? String(tarefa.estimativaMin) : '',
     nota: tarefa?.nota || '',
   }));
 
@@ -679,6 +685,7 @@ function FormularioTarefa({
       prazo: v.prazo || undefined,
       frenteId: v.frenteId,
       peso: v.peso,
+      estimativaMin: Number(v.estimativaMin) || undefined,
       nota: v.nota.trim() || undefined,
       feita: tarefa?.feita || false,
       criadoEm: tarefa?.criadoEm || new Date().toISOString(),
@@ -705,6 +712,12 @@ function FormularioTarefa({
             </Selecao>
           </Campo>
         </div>
+
+        <Campo rotulo="Quanto tempo leva (min)"
+          dica="Chute grosseiro serve. Em branco, a capacidade da semana assume 45 minutos — ou 2 horas se for chave. É essa soma que diz se a semana cabe.">
+          <Entrada type="number" inputMode="numeric" value={v.estimativaMin}
+            onChange={(e) => mudar({ estimativaMin: e.target.value })} placeholder="45" />
+        </Campo>
 
         <EscolhaDeFrente frentes={frentes} valor={v.frenteId} aoMudar={(id) => mudar({ frenteId: id })} />
 

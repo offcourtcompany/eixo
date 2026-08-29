@@ -34,6 +34,9 @@ import { analisar, seguirOuCancelar, precoDeEquilibrio, resumoDaTemporada } from
 import {
   cargaDoTreino, cargaDaQuadra, quadraEstimada, serieDeCarga, zonaDe, lerCarga, recadoDaCarga,
 } from './carga';
+import {
+  calcularCapacidade, zonaDaSemana, diaMaisCheio, horasDeCorpo,
+} from './capacidade';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
@@ -1087,5 +1090,103 @@ describe('carga total', () => {
     const r = recadoDaCarga(lerCarga([], [], HOJE));
     expect(r.titulo).toBe('Ainda medindo');
     expect(r.tom).toBe('info');
+  });
+});
+
+describe('capacidade da semana', () => {
+  // 2026-08-26 é uma quarta; a semana começa em 2026-08-24 (segunda).
+  const QUA = '2026-08-26';
+  const rot = (p: Partial<Rotina>): Rotina => ({
+    id: 'r', titulo: 'Expediente', dias: [1, 2, 3, 4, 5], duracaoMin: 240,
+    ativo: true, criadoEm: agora, ...p,
+  });
+  const tar = (p: Partial<Tarefa>): Tarefa => ({
+    id: 't', titulo: 'Afazer', peso: 'normal', feita: false, criadoEm: agora, ...p,
+  });
+  const base = {
+    rotinas: [] as Rotina[], eventos: [] as Evento[], tarefas: [] as Tarefa[],
+    frentes: [] as Frente[], treinos: [] as TreinoDoc2[], dias: [] as Dia[], data: QUA,
+  };
+
+  it('desconta sono e manutenção antes de qualquer decisão', () => {
+    const c = calcularCapacidade(base);
+    expect(c.sono).toBe(52.5);
+    expect(c.manutencao).toBe(21);
+    expect(c.disponivel).toBe(168 - 52.5 - 21);
+    expect(c.segunda).toBe('2026-08-24');
+  });
+
+  it('soma rotina, evento e afazer, e separa por frente', () => {
+    const c = calcularCapacidade({
+      ...base,
+      frentes: [
+        { id: 'f1', nome: 'Arena', cor: '#EE6018', tipo: 'fixo', ativo: true, ordem: 1, criadoEm: agora },
+      ],
+      rotinas: [rot({ frenteId: 'f1' })],                      // 5 × 240 = 20 h
+      eventos: [{ id: 'e', titulo: 'Reunião', data: QUA, duracaoMin: 120, frenteId: 'f1', criadoEm: agora }],
+      tarefas: [tar({ id: 'a', prazo: QUA, peso: 'chave' })],  // 120 min padrão
+    });
+    expect(c.rotinas).toBe(20);
+    expect(c.eventos).toBe(2);
+    expect(c.tarefas).toBe(2);
+    // A tarefa não tem frente: 20 h de rotina + 2 h de evento ficam com a Arena.
+    expect(c.porFrente[0]).toMatchObject({ nome: 'Arena', horas: 22 });
+    expect(c.porFrente[1]).toMatchObject({ nome: 'sem frente', horas: 2 });
+  });
+
+  it('afazer atrasado continua pesando na semana', () => {
+    const c = calcularCapacidade({
+      ...base,
+      tarefas: [
+        tar({ id: 'velha', prazo: '2026-07-01' }),
+        tar({ id: 'futura', prazo: '2026-12-01' }),
+        tar({ id: 'pronta', prazo: '2026-07-01', feita: true }),
+      ],
+    });
+    expect(c.tarefas).toBe(0.75);          // só a atrasada, 45 min
+    expect(c.semEstimativa).toBe(1);
+  });
+
+  it('a estimativa declarada substitui o padrão', () => {
+    const c = calcularCapacidade({ ...base, tarefas: [tar({ prazo: QUA, estimativaMin: 300 })] });
+    expect(c.tarefas).toBe(5);
+    expect(c.semEstimativa).toBe(0);
+  });
+
+  it('treino e quadra entram pela média das últimas quatro semanas', () => {
+    const dias = Array.from({ length: 28 }, (_, i) => ({
+      id: somaDias(QUA, -i), quadraMin: 60,
+    })) as Dia[];
+    expect(horasDeCorpo([], dias, QUA)).toBeCloseTo(28 * 60 / 60 / 4, 4);
+  });
+
+  it('acusa a semana que não cabe', () => {
+    const c = calcularCapacidade({
+      ...base,
+      rotinas: [rot({ id: 'a', dias: [0, 1, 2, 3, 4, 5, 6], duracaoMin: 600 })],   // 70 h
+      tarefas: Array.from({ length: 20 }, (_, i) => tar({ id: 'x' + i, prazo: QUA, peso: 'chave' })),
+    });
+    expect(c.zona).toBe('estourada');
+    expect(c.livre).toBeLessThan(0);
+    expect(c.ocupacao).toBeGreaterThan(1);
+  });
+
+  it('o teto de conforto é 85%, não 100%', () => {
+    expect(zonaDaSemana(0.4)).toBe('folga');
+    expect(zonaDaSemana(0.7)).toBe('ok');
+    expect(zonaDaSemana(0.9)).toBe('cheia');
+    expect(zonaDaSemana(1.2)).toBe('estourada');
+  });
+
+  it('encontra o dia mais cheio da semana', () => {
+    const d = diaMaisCheio({
+      ...base,
+      rotinas: [rot({ dias: [1], duracaoMin: 120 })],
+      eventos: [
+        { id: 'e1', titulo: 'Torneio', data: '2026-08-29', duracaoMin: 600, criadoEm: agora },
+      ],
+    });
+    expect(d.data).toBe('2026-08-29');
+    expect(d.horas).toBe(10);
   });
 });
