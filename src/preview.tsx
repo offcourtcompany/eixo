@@ -19,7 +19,7 @@ import type { DadosApp } from './dadosApp';
 import type {
   Dia, Lancamento, Divida, AcaoEstrutural, Habito, Meta, Recorrente, Treino as TreinoDoc,
   Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
-  Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade, PlanoEvento,
+  Estudo as EstudoDoc, Pergunta, Conquista, Oportunidade, PlanoEvento, Ideia as IdeiaDoc,
 } from './tipos';
 import { hoje, somaDias, mesAtual, mesRelativo } from './formato';
 import { MODELO_TORNEIO } from './dados/checklistTorneio';
@@ -28,6 +28,7 @@ import {
   HABITOS_SUGERIDOS, ACOES_SUGERIDAS, metaModelo, FRENTES_SUGERIDAS, REFEICOES_SUGERIDAS,
 } from './dados/sementes';
 import { ESTUDOS_SUGERIDOS, PERGUNTAS_SUGERIDAS } from './dados/estudos';
+import { IDEIAS_SUGERIDAS } from './dados/ideias';
 import { trimestreAtual } from './formato';
 import Hoje from './telas/Hoje';
 import Agenda from './telas/Agenda';
@@ -144,6 +145,19 @@ function semear() {
     proximaEm: somaDias(hoje(), i < 3 ? -1 : 4),
     intervalo: i < 3 ? 2 : 6,
     acertos: i, erros: i % 2,
+    criadoEm: agora,
+  }));
+
+  // As ideias embarcadas, com o começo da estante já estudado — é o estado
+  // que faz o cartão da ideia do dia aparecer com progresso real.
+  const ideias: IdeiaDoc[] = IDEIAS_SUGERIDAS.slice(0, 24).map((x, i) => ({
+    id: "idea" + i,
+    estudoId: "est" + (x.ordemDoEstudo - 1),
+    titulo: x.titulo,
+    conteudo: x.conteudo,
+    aplicacao: x.aplicacao,
+    ordem: i + 1,
+    estudada: i < 7,
     criadoEm: agora,
   }));
 
@@ -272,7 +286,7 @@ function semear() {
     },
   ];
 
-  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas, oportunidades, planos };
+  return { habitos, dias, lancamentos, recorrentes, dividas, acoes, metas, treinos, frentes, eventos, rotinas, tarefas, marcos, refeicoes, semanas, estudos, perguntas, conquistas, oportunidades, planos, ideias };
 }
 
 /** Coleção em memória com a mesma superfície de useColecao. */
@@ -324,6 +338,7 @@ function Bancada() {
   const perguntas = useColecaoFalsa<Pergunta>(inicial.perguntas);
   const conquistas = useColecaoFalsa<Conquista>(inicial.conquistas);
   const planos = useColecaoFalsa<PlanoEvento>(inicial.planos);
+  const ideias = useColecaoFalsa<IdeiaDoc>(inicial.ideias);
   const oportunidades = useColecaoFalsa<Oportunidade>(inicial.oportunidades);
   const diasColecao = useColecaoFalsa<Dia>(inicial.dias);
 
@@ -337,7 +352,7 @@ function Bancada() {
     uid: 'previa',
     lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
     frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
-    estudos, perguntas, conquistas, oportunidades, planos,
+    estudos, perguntas, conquistas, oportunidades, planos, ideias,
     dias: diasColecao.itens,
     porData,
     salvarDia: diasColecao.salvar,

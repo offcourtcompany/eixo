@@ -39,12 +39,14 @@ import {
 } from './capacidade';
 import { gerarChecklist, prazoDoItem, estadoDoChecklist, riscoDoEvento } from './checklist';
 import { MODELO_TORNEIO } from '../dados/checklistTorneio';
+import { ordenarIdeias, estadoDasIdeias, ideiasDoEstudo, recadoDasIdeias } from './ideias';
+import { IDEIAS_SUGERIDAS } from '../dados/ideias';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
   Divida, Recorrente, Lancamento, Frente, Rotina, Tarefa, Evento, Dia, Refeicao, AlimentoMeu,
   Meta, Semana as SemanaDoc, Pergunta, Estudo, Oportunidade, PlanoEvento,
-  Treino as TreinoDoc2,
+  Treino as TreinoDoc2, Estudo as EstudoDoc2, Ideia as IdeiaDoc2,
 } from '../tipos';
 
 const agora = '2026-08-01T00:00:00.000Z';
@@ -1268,5 +1270,58 @@ describe('checklist de torneio', () => {
       checklist: gerarChecklist().map((i) => ({ ...i, feita: true })),
     });
     expect(riscoDoEvento(estadoDoChecklist(fechado, HOJE), fechado, HOJE)?.tom).toBe('bom');
+  });
+});
+
+describe('ideias embarcadas', () => {
+  const est = (ordem: number): EstudoDoc2 => ({
+    id: 'e' + ordem, titulo: 'Livro ' + ordem, tipo: 'livro', trilha: 'x',
+    porque: 'y', eixo: 'oficio', status: 'fila', progresso: 0, ordem, criadoEm: agora,
+  });
+  const ide = (estudoId: string, ordem: number, estudada = false): IdeiaDoc2 => ({
+    id: estudoId + '-' + ordem, estudoId, titulo: 't', conteudo: 'c', aplicacao: 'a',
+    ordem, estudada, criadoEm: agora,
+  });
+
+  const estudos = [est(2), est(1)];
+  const ideias = [ide('e2', 1), ide('e1', 2), ide('e1', 1)];
+
+  it('a ordem é a da estante: material primeiro, sequência depois', () => {
+    expect(ordenarIdeias(ideias, estudos).map((i) => i.id))
+      .toEqual(['e1-1', 'e1-2', 'e2-1']);
+  });
+
+  it('a próxima é a primeira não estudada nessa ordem', () => {
+    const e = estadoDasIdeias([ide('e1', 1, true), ide('e1', 2), ide('e2', 1)], estudos);
+    expect(e.proxima?.id).toBe('e1-2');
+    expect(e.estudadas).toBe(1);
+    expect(e.diasRestantes).toBe(2);
+    expect(e.progresso).toBeCloseTo(1 / 3, 4);
+  });
+
+  it('com tudo estudado não há próxima, e o recado muda', () => {
+    const e = estadoDasIdeias(ideias.map((i) => ({ ...i, estudada: true })), estudos);
+    expect(e.proxima).toBeNull();
+    expect(e.progresso).toBe(1);
+    expect(recadoDasIdeias(e)).toContain('revisões');
+  });
+
+  it('o progresso por material conta só as dele', () => {
+    const r = ideiasDoEstudo([ide('e1', 1, true), ide('e1', 2), ide('e2', 1)], 'e1');
+    expect(r.total).toBe(2);
+    expect(r.estudadas).toBe(1);
+    expect(r.itens.map((i) => i.ordem)).toEqual([1, 2]);
+  });
+
+  it('o modelo cobre os treze materiais, com quatro ideias cada', () => {
+    const porLivro = new Map<number, number>();
+    for (const i of IDEIAS_SUGERIDAS) {
+      porLivro.set(i.ordemDoEstudo, (porLivro.get(i.ordemDoEstudo) || 0) + 1);
+    }
+    expect(porLivro.size).toBe(13);
+    expect([...porLivro.values()].every((n) => n === 4)).toBe(true);
+    expect(IDEIAS_SUGERIDAS).toHaveLength(52);
+    // Toda ideia diz onde encosta: aplicação vazia tornaria o módulo inútil.
+    expect(IDEIAS_SUGERIDAS.every((i) => i.aplicacao.trim().length > 40)).toBe(true);
   });
 });

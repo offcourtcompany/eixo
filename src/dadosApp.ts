@@ -10,7 +10,7 @@ import { useColecao, useDias, usePerfil } from './store';
 import type {
   Lancamento, Divida, AcaoEstrutural, Habito, Meta, Treino, Recorrente,
   Frente, Evento, Rotina, Tarefa, Marco, Refeicao, AlimentoMeu, Semana,
-  Estudo, Pergunta, Conquista, Oportunidade, PlanoEvento,
+  Estudo, Pergunta, Conquista, Oportunidade, PlanoEvento, Ideia,
 } from './tipos';
 
 export function useDadosApp(uid: string) {
@@ -34,13 +34,14 @@ export function useDadosApp(uid: string) {
   const conquistas = useColecao<Conquista>(uid, 'conquistas', 'ordem', 'asc');
   const oportunidades = useColecao<Oportunidade>(uid, 'oportunidades', 'atualizadoEm');
   const planos = useColecao<PlanoEvento>(uid, 'planos', 'ordem', 'asc');
+  const ideias = useColecao<Ideia>(uid, 'ideias', 'ordem', 'asc');
   const { dias, porData, salvarDia } = useDias(uid);
   const { perfil, salvarPerfil } = usePerfil(uid);
 
   return {
     uid, lancamentos, recorrentes, dividas, acoes, habitos, metas, treinos,
     frentes, eventos, rotinas, tarefas, marcos, refeicoes, alimentos, semanas,
-    estudos, perguntas, conquistas, oportunidades, planos,
+    estudos, perguntas, conquistas, oportunidades, planos, ideias,
     dias, porData, salvarDia, perfil, salvarPerfil,
   };
 }

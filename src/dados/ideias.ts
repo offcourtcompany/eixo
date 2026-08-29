@@ -203,4 +203,160 @@ export const IDEIAS_SUGERIDAS: IdeiaSemente[] = [
     conteudo: 'O primeiro número dito molda toda a faixa da negociação. Voss recomenda ancorar alto quando você abre, sustentar com uma justificativa concreta, e usar números não redondos — 37.500 parece calculado, 40.000 parece chute e convida a contraproposta.',
     aplicacao: 'Se hoje você manda a tabela de cotas em 30, 15 e 10 mil, está ancorando em números redondos que pedem desconto. Uma cota master em 32.400 com a conta que justifica — custo por contato, alcance, ativação — muda a conversa de "quanto você faz?" para "de onde vem esse número?".',
   },
+
+  // ─────────── 8. A Psicologia Financeira ───────────
+  {
+    ordemDoEstudo: 8,
+    titulo: 'Ninguém é louco: cada um decide com a própria história',
+    conteudo: 'Housel abre com a tese de que decisões financeiras que parecem insanas de fora quase sempre fazem sentido de dentro. Quem cresceu vendo o dinheiro faltar aprendeu uma coisa; quem cresceu vendo investimento render aprendeu outra. As duas pessoas leem a mesma planilha e agem de formas opostas, e nenhuma das duas está sendo burra — cada uma usa a amostra do mundo que a vida deu.',
+    aplicacao: 'Serve para duas coisas suas. Primeira: parar de se julgar pela dívida no rotativo, porque autojulgamento não amortiza saldo e piora a decisão seguinte. Segunda: entender o dono da arena e o patrocinador que dizem não — eles não estão vendo o seu evento, estão vendo o patrocínio que deu errado para eles.',
+  },
+  {
+    ordemDoEstudo: 8,
+    titulo: 'Todo retorno tem preço, e ele se paga em desconforto',
+    conteudo: 'O preço de um retorno alto não vem em boleto: vem em incerteza, oscilação e vontade de desistir na hora errada. Como o preço não está escrito em lugar nenhum, muita gente tenta levar o resultado sem pagá-lo — troca de estratégia toda vez que aperta, e acaba pagando uma multa maior do que se tivesse aguentado.',
+    aplicacao: 'Receita de evento próprio tem retorno alto e volatilidade alta: o preço dela é o mês em que a inscrição não vende. Receita contratada rende menos e custa menos. Enquanto o rotativo existir, você não tem caixa para pagar volatilidade — não é falta de coragem, é que a passagem custa mais do que você tem.',
+  },
+  {
+    ordemDoEstudo: 8,
+    titulo: 'Riqueza é o que você não vê',
+    conteudo: 'O carro na garagem é gasto, não patrimônio. Riqueza é a receita que não virou consumo, e por isso é invisível por definição — o que dá para ver é sempre o dinheiro que já saiu. Daí um problema de referência: as pessoas copiam sinais de riqueza que são, na verdade, sinais de despesa.',
+    aplicacao: 'No meio esportivo isso é diário: carro, tênis, viagem de circuito. É o mesmo mecanismo do campo de custo mensal depois nas Conquistas do app — quase toda compra aparente sobe o seu piso mensal para sempre. Enquanto a receita previsível não cobrir o custo fixo, cada sinal desses compra mais um mês de dependência de evento.',
+  },
+  {
+    ordemDoEstudo: 8,
+    titulo: 'Margem de erro é o que mantém você no jogo',
+    conteudo: 'A folga não existe para render, existe para você continuar jogando quando algo der errado — e algo sempre dá. Housel trata sobrevivência como a única vantagem que compõe juros: quem fica em pé tempo suficiente colhe os anos bons, e quem quebra uma vez perde todos eles.',
+    aplicacao: 'É a reserva de três meses do app, e é por isso que ela vem antes de qualquer conquista da lista. Com colchão, uma etapa que vende pouco é um mês ruim. Sem colchão, a mesma etapa vira rotativo novo a 15% ao mês, e o rotativo devolve você para o começo da fila.',
+  },
+
+  // ─────────── 9. A Transformação Total do Seu Dinheiro ───────────
+  {
+    ordemDoEstudo: 9,
+    titulo: 'A bola de neve escolhe o comportamento, não a matemática',
+    conteudo: 'Ramsey manda quitar a menor dívida primeiro, mesmo quando outra cobra juros maiores. Ele sabe que isso custa mais em juros e defende assim mesmo: dívida não é problema de planilha, é problema de persistência, e a vitória rápida da primeira quitação é o que faz a pessoa continuar. Motivação vencendo otimização, de propósito.',
+    aplicacao: 'O app mostra as duas estratégias lado a lado justamente para você ver o preço dessa escolha. Com 13 mil a 15% ao mês e 1.800 a 3,5%, a diferença entre bola de neve e avalanche costuma ser pequena em reais e grande em ânimo — quando for pequena, escolha a que você sustenta.',
+  },
+  {
+    ordemDoEstudo: 9,
+    titulo: 'O colchão pequeno vem antes de atacar a dívida',
+    conteudo: 'Antes de acelerar a quitação, Ramsey manda juntar uma reserva pequena e rápida. A lógica é operacional, não financeira: sem reserva nenhuma, o primeiro imprevisto volta para o cartão e desfaz três meses de esforço. Esse colchão inicial não enriquece ninguém — ele impede a recaída.',
+    aplicacao: 'No seu caso o imprevisto tem nome: viagem para ver a filha, freio do carro, fornecedor que furou na véspera do torneio. Juntar mil reais intocáveis antes de acelerar parece atraso e é o contrário — é o que faz a quitação não recomeçar do zero em novembro.',
+  },
+  {
+    ordemDoEstudo: 9,
+    titulo: 'Orçamento de base zero: todo real recebe um nome',
+    conteudo: 'A regra é dar destino a cada real antes de o mês começar, até não sobrar nada sem destino. Não é apertar gasto, é decidir antes em vez de descobrir depois. O que sobra sem nome não sobra de verdade: some, e ninguém consegue dizer para onde foi.',
+    aplicacao: 'É o que os fixos cadastrados já fazem no app: o piso do mês deixou de ser estimativa. Falta a outra metade, que é dar nome ao dinheiro de evento antes de ele entrar — quanto vai para dívida, quanto para reserva, quanto fica para a operação da etapa seguinte.',
+  },
+  {
+    ordemDoEstudo: 9,
+    titulo: 'Renda é a alavanca forte; cortar tem fundo',
+    conteudo: 'A maior alavanca de quem está endividado é a renda, não a economia. Corte de gasto tem limite matemático — ninguém gasta menos que zero — enquanto renda não tem teto. Por isso a fase de quitação é fase de trabalhar mais e vender melhor, não de viver pior.',
+    aplicacao: 'Só os juros do seu rotativo passam de mil e novecentos por mês. Nenhuma disciplina de gasto vence isso: ou troca de contrato, ou receita nova. É por isso que as Ações estruturais e o Funil pesam mais, no seu plano, que qualquer corte de despesa pequena.',
+  },
+
+  // ─────────── 10. Hábitos Atômicos ───────────
+  {
+    ordemDoEstudo: 10,
+    titulo: 'Sistemas ganham de metas',
+    conteudo: 'Clear separa a meta, que é o resultado desejado, do sistema, que é o processo que o produz. Vencedores e perdedores costumam ter as mesmas metas; o que difere é o sistema. E meta atingida traz um risco pouco discutido: ela termina, e com ela termina o comportamento que a sustentava.',
+    aplicacao: 'É a diferença entre os resultados-chave e as medidas de direção nas Metas do app. Meta é sair de 96 quilos; sistema é treinar terça e quinta e ter proteína no almoço. Meta é vender três cotas; sistema é o bloco de prospecção de terça e quinta às nove.',
+  },
+  {
+    ordemDoEstudo: 10,
+    titulo: 'A regra dos dois minutos',
+    conteudo: 'Todo hábito novo deve começar numa versão que leve menos de dois minutos, a ponto de parecer ridícula. O objetivo dos primeiros meses não é o resultado, é a frequência: primeiro se estabelece a identidade de quem faz aquilo, depois se aumenta a dose. Quem começa pela dose completa negocia consigo mesmo todo dia.',
+    aplicacao: 'É o campo do piso em cada hábito do app. Em dia de operação de torneio, treinar é vestir a roupa e fazer uma série; estudar é abrir uma pergunta de revisão. Na sua rotina o piso não é preguiça — é o que impede a semana de evento de zerar a sequência.',
+  },
+  {
+    ordemDoEstudo: 10,
+    titulo: 'Nunca falhar duas vezes seguidas',
+    conteudo: 'Um dia perdido é ruído. O que desmonta um hábito é a segunda falta, porque ela deixa de ser exceção e vira o novo padrão. A regra troca a busca por perfeição, que quebra na primeira falha, por uma regra de recuperação, que sobrevive a ela.',
+    aplicacao: 'É a regra que a tela de Hábitos vigia com o aviso de duas faltas seguidas. Com madrugada produtiva e sábado de torneio, perfeição é impossível para você — e recuperação é inteiramente possível.',
+  },
+  {
+    ordemDoEstudo: 10,
+    titulo: 'Intenção de implementação e empilhamento',
+    conteudo: 'Dizer que vai fazer não muda comportamento; dizer quando e onde muda. Melhor ainda é empilhar sobre um hábito que já existe: depois de fazer o café, eu faço isto. O gatilho deixa de depender de lembrar e passa a depender de algo que já acontece sozinho.',
+    aplicacao: 'São os campos de quando, onde e depois de no cadastro de hábito. A sua âncora mais confiável não é o relógio, é o evento do dia: depois que eu chego na arena, depois que eu fecho o caixa, depois que eu volto da quadra.',
+  },
+
+  // ─────────── 11. As 4 Disciplinas da Execução ───────────
+  {
+    ordemDoEstudo: 11,
+    titulo: 'O redemoinho: o urgente come o importante',
+    conteudo: 'O trabalho do dia a dia — o redemoinho — não é inimigo, é o que mantém a operação viva. Só que ele consome toda a energia disponível e nunca acaba, então qualquer objetivo novo compete com ele em desvantagem. A execução falha menos por falta de estratégia e mais porque o redemoinho vence todo dia por pontos.',
+    aplicacao: 'O seu redemoinho é a arena: grade, atleta, pagamento, quadra molhada. Ele é legítimo e paga suas contas. E é exatamente por isso que a meta de receita recorrente precisa de hora marcada na Agenda — sem isso ela nunca vai ser a coisa mais urgente de nenhum dia.',
+  },
+  {
+    ordemDoEstudo: 11,
+    titulo: 'Uma coisa extremamente importante, não cinco',
+    conteudo: 'Quanto mais objetivos simultâneos, pior o resultado de todos. Duas ou três metas ainda saem; de cinco em diante, a taxa de conclusão desaba. A disciplina é escolher uma meta crucial e aceitar que as outras ficam em manutenção — não abandonadas, apenas sem prioridade de energia.',
+    aplicacao: 'Você tem quatro frentes e todas parecem urgentes. A pergunta do método é qual delas, se avançar, deixa as outras mais fáceis. Quase sempre é receita previsível: com o piso coberto, torneio próprio vira escolha em vez de necessidade.',
+  },
+  {
+    ordemDoEstudo: 11,
+    titulo: 'Medidas de direção contra medidas de resultado',
+    conteudo: 'Medida de resultado é o que você quer e não controla: faturamento, peso, cotas fechadas. Medida de direção é o que você controla e que prevê o resultado: propostas enviadas, treinos feitos, conversas iniciadas. Só a segunda dá para agir hoje, e é ela que move a primeira.',
+    aplicacao: 'É o placar semanal do app. Cota fechada não se controla; três conversas novas por semana, sim. Peso não se controla no dia; dois treinos e a proteína do almoço, sim. Quando a semana fecha vermelha na medida de direção, o problema é anterior ao resultado.',
+  },
+  {
+    ordemDoEstudo: 11,
+    titulo: 'Placar visível e prestação de contas semanal',
+    conteudo: 'Gente joga diferente quando o placar está à vista. Ele precisa ser simples e responder em cinco segundos se você está ganhando. Some a isso um encontro semanal curto em que cada um responde pelo que se comprometeu, e a execução deixa de depender de motivação.',
+    aplicacao: 'É a tela de Fechar a semana, e é a razão de ela ser manual: prestação de contas automática não é prestação de contas. Sem sócio, a cobrança é sua com você mesmo — e o registro escrito é o que a torna real em vez de conversa interna que some.',
+  },
+
+  // ─────────── 12. Trabalho Focado ───────────
+  {
+    ordemDoEstudo: 12,
+    titulo: 'Trabalho focado é raro, e por isso é caro',
+    conteudo: 'Newport separa o trabalho profundo, que exige concentração sem interrupção e cria valor difícil de replicar, do trabalho raso, que é logístico e qualquer um faz. Como o dia despeja interrupção o tempo todo, a capacidade de focar ficou rara ao mesmo tempo em que ficou mais valiosa. Escassez com demanda alta é a definição de preço alto.',
+    aplicacao: 'Montar uma proposta de cota que se justifica com números é trabalho profundo. Responder mensagem de atleta é raso — necessário, mas qualquer pessoa treinada faz. O que separa o gestor de arena do dono de circuito é quantas horas profundas por semana ele consegue proteger.',
+  },
+  {
+    ordemDoEstudo: 12,
+    titulo: 'A troca de contexto cobra um resíduo',
+    conteudo: 'Ao pular de uma tarefa para outra, parte da atenção fica presa na anterior. Esse resíduo faz a segunda render menos, e quem alterna o tempo todo trabalha o dia inteiro numa fração da própria capacidade. A conta não é o minuto olhando o celular, é os quinze seguintes.',
+    aplicacao: 'A sua madrugada rende porque ninguém interrompe. Isso não é preferência de horário, é a única janela sem resíduo que a sua rotina oferece — e merece ser tratada como recurso escasso, com o trabalho mais difícil da semana dentro dela.',
+  },
+  {
+    ordemDoEstudo: 12,
+    titulo: 'Ritual, não força de vontade',
+    conteudo: 'Newport trata o foco como prática agendada, com lugar, duração e regras definidas, e não como estado de espírito. Força de vontade é recurso que acaba durante o dia; ritual não depende dela. Quem espera se sentir concentrado trabalha pouco e se culpa muito.',
+    aplicacao: 'Vira bloco na Agenda com frente marcada, e aí a capacidade da semana passa a saber que ele existe. Duas horas de madrugada, duas vezes por semana, com o celular em outro cômodo, produzem mais avanço comercial que uma semana inteira de disponibilidade dispersa.',
+  },
+  {
+    ordemDoEstudo: 12,
+    titulo: 'O trabalho raso tem cota, e a cota se defende',
+    conteudo: 'O trabalho raso não desaparece: ele precisa caber num teto. Newport sugere estimar quanto do dia é raso e negociar esse limite de forma explícita, inclusive avisando às pessoas quando você responde. Sem teto declarado, o raso ocupa todo o espaço disponível.',
+    aplicacao: 'Duas janelas de mensagens por dia, anunciadas no grupo da arena, custam algum incômodo na primeira semana e devolvem a madrugada inteira. E o raso que sobrar é justamente o que dá para delegar primeiro, quando o caixa permitir.',
+  },
+
+  // ─────────── 13. Sports Marketing ───────────
+  {
+    ordemDoEstudo: 13,
+    titulo: 'O produto esportivo é imprevisível, e é isso que se vende',
+    conteudo: 'O esporte tem uma característica que quase nenhum outro produto tem: quem o produz não controla o resultado. O jogo pode ser ruim, pode chover, o favorito pode cair na primeira fase. Por isso o marketing esportivo não vende o jogo — vende a experiência ao redor dele, que é a parte que dá para garantir: organização, ambiente, pertencimento, ritual.',
+    aplicacao: 'Você não controla se a final vai ser equilibrada. Controla grade cumprida, som, água gelada, foto entregue na segunda, arbitragem que não gera discussão. É por isso que a experiência é o seu produto vendável — e é o que faz o atleta voltar mesmo na edição em que ele perdeu cedo.',
+  },
+  {
+    ordemDoEstudo: 13,
+    titulo: 'O patrocinador compra público, não o seu evento',
+    conteudo: 'Patrocínio é troca comercial, não apoio. A marca compra acesso qualificado a um público específico, associação de imagem e ativação — a chance de fazer alguma coisa com aquelas pessoas. Proposta que fala do evento perde para proposta que fala do público do evento e do que a marca consegue fazer com ele.',
+    aplicacao: 'O seu mídia kit deveria abrir com quem joga: faixa etária, renda, bairro, quantos voltam, quantos levam acompanhante. Cota de trinta mil não se justifica pelo tamanho do torneio; se justifica pelo custo por contato qualificado comparado ao que a marca paga em mídia comum.',
+  },
+  {
+    ordemDoEstudo: 13,
+    titulo: 'Retenção vale mais que público de uma edição',
+    conteudo: 'No esporte, a base recorrente vale muito mais que o público de um evento isolado — a mesma pessoa volta por temporadas e traz gente junto. Por isso a métrica que importa não é público por edição, é retenção: quantos dos que vieram voltam, e quantas edições cada um joga.',
+    aplicacao: 'É a métrica que o seu circuito ainda não mede e deveria: quantas duplas da primeira edição voltaram para a segunda. Esse número é o argumento mais forte que existe numa negociação de cota de temporada — e a lista de inscritos guardada é o ativo que o produz.',
+  },
+  {
+    ordemDoEstudo: 13,
+    titulo: 'Segmentar em vez de falar com todo mundo',
+    conteudo: 'Um evento esportivo atende públicos diferentes ao mesmo tempo: o competitivo que quer nível, o iniciante que quer pertencer, o acompanhante que quer conforto, a marca que quer visibilidade. Tratar todos com a mesma comunicação entrega uma mensagem morna que não convence nenhum deles.',
+    aplicacao: 'Categoria iniciante e categoria aberta não se vendem com o mesmo post: uma vende acolhimento e primeira vez, a outra vende nível e disputa. Separar as duas comunicações costuma encher justamente a categoria que sempre falta, que é onde está o crescimento do circuito.',
+  },
 ];

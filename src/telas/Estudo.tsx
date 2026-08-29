@@ -21,10 +21,12 @@ import {
   type Resultado,
 } from '../logica/estudo';
 import { ESTUDOS_SUGERIDOS, PERGUNTAS_SUGERIDAS } from '../dados/estudos';
+import { IDEIAS_SUGERIDAS } from '../dados/ideias';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, AreaTexto, Selecao,
   Folha, Vazio, Barra, Legenda, Aviso, Pilula,
 } from '../componentes/ui';
+import { BlocoIdeiaDoDia, ProgressoDeIdeias, FolhaDoMaterial } from '../componentes/Ideias';
 
 export default function EstudoTela({ dados }: { dados: DadosApp }) {
   const estudos = dados.estudos.itens;
@@ -34,6 +36,7 @@ export default function EstudoTela({ dados }: { dados: DadosApp }) {
   const [revisando, setRevisando] = useState(false);
   const [aberta, setAberta] = useState(false);
   const [editando, setEditando] = useState<Estudo | null>(null);
+  const [material, setMaterial] = useState<Estudo | null>(null);
 
   function abrir(e: Estudo | null) { setEditando(e); setAberta(true); }
 
@@ -58,6 +61,24 @@ export default function EstudoTela({ dados }: { dados: DadosApp }) {
         criadoEm: agora,
       });
     }
+    // As ideias entram na mesma passada: sem elas, a estante volta a ser uma
+    // lista de livros que ele já disse que não vai ler.
+    const porEstudo = new Map<number, number>();
+    for (const i of IDEIAS_SUGERIDAS) {
+      const estudoId = porOrdem.get(i.ordemDoEstudo);
+      if (!estudoId) continue;
+      const ordem = (porEstudo.get(i.ordemDoEstudo) || 0) + 1;
+      porEstudo.set(i.ordemDoEstudo, ordem);
+      await dados.ideias.salvar({
+        estudoId,
+        titulo: i.titulo,
+        conteudo: i.conteudo,
+        aplicacao: i.aplicacao,
+        ordem: i.ordemDoEstudo * 100 + ordem,
+        estudada: false,
+        criadoEm: agora,
+      });
+    }
   }
 
   if (!estudos.length) {
@@ -68,7 +89,9 @@ export default function EstudoTela({ dados }: { dados: DadosApp }) {
           <Vazio titulo="Estante vazia">
             Posso começar com treze materiais escolhidos para o que você está construindo — caixa,
             venda de cota, negócio que funciona sem o dono, e os métodos que este app já usa. Cada
-            um vem com o motivo de estar na lista, e os primeiros já trazem perguntas de revisão.
+            um vem com o motivo de estar na lista e com as ideias centrais já escritas: 52 ao todo,
+            uma por dia, com o lugar onde cada uma encosta na arena, no torneio ou na dívida. Dá
+            para estudar a estante inteira sem ler nenhum dos livros por completo.
           </Vazio>
           <div className="mt-3 flex gap-2">
             <Botao variante="secundario" className="flex-1" onClick={() => void semear()}>
@@ -120,20 +143,24 @@ export default function EstudoTela({ dados }: { dados: DadosApp }) {
         )}
       </Cartao>
 
+      <BlocoIdeiaDoDia dados={dados} />
+
       {estado.lendo.length > 0 && (
-        <BlocoDeLista titulo="Lendo agora" itens={estado.lendo} dados={dados} aoAbrir={abrir} />
+        <BlocoDeLista titulo="Lendo agora" itens={estado.lendo} dados={dados} aoAbrir={abrir} aoAbrirIdeias={setMaterial} />
       )}
-      <BlocoDeLista titulo="Fila" itens={estado.fila} dados={dados} aoAbrir={abrir} />
+      <BlocoDeLista titulo="Fila" itens={estado.fila} dados={dados} aoAbrir={abrir} aoAbrirIdeias={setMaterial} />
       {estado.lidos.length > 0 && (
-        <BlocoDeLista titulo="Terminados" itens={estado.lidos} dados={dados} aoAbrir={abrir} />
+        <BlocoDeLista titulo="Terminados" itens={estado.lidos} dados={dados} aoAbrir={abrir} aoAbrirIdeias={setMaterial} />
       )}
       {estado.largados.length > 0 && (
-        <BlocoDeLista titulo="Largados" itens={estado.largados} dados={dados} aoAbrir={abrir} />
+        <BlocoDeLista titulo="Largados" itens={estado.largados} dados={dados} aoAbrir={abrir} aoAbrirIdeias={setMaterial} />
       )}
 
       <BlocoRevisao perguntas={perguntas} />
 
       <FolhaRevisao aberta={revisando} aoFechar={() => setRevisando(false)} dados={dados} />
+      <FolhaDoMaterial aberta={Boolean(material)} aoFechar={() => setMaterial(null)}
+        estudo={material} dados={dados} />
       <FormularioEstudo aberta={aberta} aoFechar={() => setAberta(false)}
         estudo={editando} dados={dados} />
     </div>
@@ -141,8 +168,11 @@ export default function EstudoTela({ dados }: { dados: DadosApp }) {
 }
 
 function BlocoDeLista({
-  titulo, itens, dados, aoAbrir,
-}: { titulo: string; itens: Estudo[]; dados: DadosApp; aoAbrir: (e: Estudo) => void }) {
+  titulo, itens, dados, aoAbrir, aoAbrirIdeias,
+}: {
+  titulo: string; itens: Estudo[]; dados: DadosApp;
+  aoAbrir: (e: Estudo) => void; aoAbrirIdeias: (e: Estudo) => void;
+}) {
   const perguntasDe = (id: string) => dados.perguntas.itens.filter((p) => p.estudoId === id).length;
 
   return (
@@ -156,29 +186,34 @@ function BlocoDeLista({
       ) : (
         <div className="space-y-1">
           {itens.map((e) => (
-            <button key={e.id} onClick={() => aoAbrir(e)}
-              className="w-full rounded-sm px-2 py-2.5 text-left transition-colors hover:bg-superficie2">
-              <span className="flex items-start gap-2.5">
-                <i className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: EIXOS[e.eixo].cor }} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{e.titulo}</span>
-                  <span className="mt-0.5 block truncate text-[11px] text-fraco">
-                    {e.autor ? e.autor + ' · ' : ''}{e.trilha}
-                    {perguntasDe(e.id) ? ' · ' + perguntasDe(e.id) + ' pergunta(s)' : ''}
+            <div key={e.id} className="rounded-sm px-2 py-2.5">
+              <button onClick={() => aoAbrir(e)} className="w-full text-left">
+                <span className="flex items-start gap-2.5">
+                  <i className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: EIXOS[e.eixo].cor }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm">{e.titulo}</span>
+                    <span className="mt-0.5 block truncate text-[11px] text-fraco">
+                      {e.autor ? e.autor + ' · ' : ''}{e.trilha}
+                      {perguntasDe(e.id) ? ' · ' + perguntasDe(e.id) + ' pergunta(s)' : ''}
+                    </span>
                   </span>
+                  {e.status === 'lendo' && e.progresso > 0 && (
+                    <span className="tabular shrink-0 text-[12px] text-fraco">{e.progresso}%</span>
+                  )}
                 </span>
-                {e.status === 'lendo' && e.progresso > 0 && (
-                  <span className="tabular shrink-0 text-[12px] text-fraco">{e.progresso}%</span>
+                {e.status === 'lendo' && (
+                  <span className="mt-2 block"><Barra valor={e.progresso / 100} /></span>
                 )}
-              </span>
-              {e.status === 'lendo' && (
-                <span className="mt-2 block"><Barra valor={e.progresso / 100} /></span>
-              )}
-              {e.porque && e.status !== 'lido' && (
-                <span className="mt-1.5 block text-[12px] leading-relaxed text-fraco">{e.porque}</span>
-              )}
-            </button>
+                {e.porque && e.status !== 'lido' && (
+                  <span className="mt-1.5 block text-[12px] leading-relaxed text-fraco">{e.porque}</span>
+                )}
+              </button>
+              {/* As ideias embarcadas ficam num toque separado do cadastro: é
+                  para estudar o conteúdo que ele vem aqui, não para editar
+                  ficha de livro. */}
+              <ProgressoDeIdeias dados={dados} estudo={e} aoAbrir={() => aoAbrirIdeias(e)} />
+            </div>
           ))}
         </div>
       )}
