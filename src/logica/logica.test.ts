@@ -45,6 +45,8 @@ import { MODELO_TORNEIO } from '../dados/checklistTorneio';
 import { ordenarIdeias, estadoDasIdeias, ideiasDoEstudo, recadoDasIdeias } from './ideias';
 import { IDEIAS_SUGERIDAS } from '../dados/ideias';
 import { BLOCOS, PERGUNTAS_CONTADOR } from '../dados/perguntasContador';
+import { planoAtivo, proximoPrograma, sugerirCarga } from './treino';
+import { PLANOS, PROGRAMAS, programaPorId } from '../dados/programas';
 import { relatarFalha, falhaAtual, limparFalha, inscreverEmFalhas } from '../erros';
 import { somaDias } from '../formato';
 import type {
@@ -1530,5 +1532,85 @@ describe('perguntas para o contador', () => {
 
   it('a primeira pergunta é a alíquota — é a única que entra no app', () => {
     expect(PERGUNTAS_CONTADOR[0].id).toBe('q-aliquota');
+  });
+});
+
+// ─────────────────────── planos e rotação de treino ───────────────────────
+
+describe('rotação dos treinos', () => {
+  const agora2 = '2026-09-05T10:00:00.000Z';
+  // A coleção chega do banco ordenada do mais recente para o mais antigo.
+  const feito = (data: string, programa: string): TreinoDoc2 => ({
+    id: 't-' + data, data, programa, exercicios: [], criadoEm: agora2,
+  });
+  const quadril = PLANOS.find((p) => p.id === 'quadril')!;
+  const forca = PLANOS.find((p) => p.id === 'forca')!;
+
+  it('sem histórico, começa pelo primeiro dia do plano', () => {
+    expect(proximoPrograma([], quadril)).toBe('IA');
+    expect(proximoPrograma([], forca)).toBe('A');
+  });
+
+  it('anda um passo na sequência e dá a volta no fim', () => {
+    expect(proximoPrograma([feito('2026-09-04', 'IA')], quadril)).toBe('SA');
+    expect(proximoPrograma([feito('2026-09-04', 'IB')], quadril)).toBe('SB');
+    expect(proximoPrograma([feito('2026-09-04', 'SB')], quadril)).toBe('IA');
+  });
+
+  it('o aquecimento avulso não move a rotação', () => {
+    const treinos = [feito('2026-09-04', 'AQ'), feito('2026-09-02', 'IA')];
+    expect(proximoPrograma(treinos, quadril)).toBe('SA');
+  });
+
+  it('o plano ativo é o do último treino, não uma configuração', () => {
+    expect(planoAtivo([feito('2026-09-04', 'B')], PLANOS).id).toBe('forca');
+    expect(planoAtivo([feito('2026-09-04', 'IB')], PLANOS).id).toBe('quadril');
+    // Treino livre não pertence a plano nenhum: cai no primeiro da lista.
+    expect(planoAtivo([feito('2026-09-04', 'livre')], PLANOS).id).toBe(PLANOS[0].id);
+    expect(planoAtivo([], PLANOS).id).toBe(PLANOS[0].id);
+  });
+
+  it('todo id de programa citado por um plano existe', () => {
+    for (const p of PLANOS) {
+      for (const id of [...p.sequencia, ...(p.avulsos || [])]) {
+        expect(programaPorId(id), id).not.toBeNull();
+      }
+      // Os dias não casam um a um com os treinos: o Força 3x roda A/B em três
+      // dias, alternando de semana em semana. O que precisa valer é que sejam
+      // dias de semana válidos, sem repetição.
+      expect(p.diasSemana.length).toBeGreaterThan(0);
+      expect(new Set(p.diasSemana).size).toBe(p.diasSemana.length);
+      expect(p.diasSemana.every((d) => d >= 0 && d <= 6)).toBe(true);
+    }
+  });
+
+  it('todo programa pertence a um plano declarado', () => {
+    for (const p of PROGRAMAS) {
+      expect(PLANOS.some((x) => x.id === p.plano), p.id).toBe(true);
+    }
+  });
+});
+
+describe('sugestão de carga em exercício sem anilha', () => {
+  const agora3 = '2026-09-05T10:00:00.000Z';
+  const comSeries = (data: string, reps: number[]): TreinoDoc2 => ({
+    id: 't-' + data, data, programa: 'IA', criadoEm: agora3,
+    exercicios: [{
+      nome: 'Clamshell com Faixa', grupo: 'pernas',
+      series: reps.map((r) => ({ carga: 0, reps: r })),
+    }],
+  });
+
+  it('peso corporal não ganha quilo: o que sobe é repetição', () => {
+    const s = sugerirCarga([comSeries('2026-09-04', [15, 15, 15])], 'Clamshell com Faixa', 15, 0);
+    expect(s?.carga).toBe(0);
+    expect(s?.motivo).toContain('repetição');
+  });
+
+  it('duas sessões travadas não geram desconto de 10% sobre zero', () => {
+    const treinos = [comSeries('2026-09-04', [12, 10, 9]), comSeries('2026-09-02', [12, 10, 9])];
+    const s = sugerirCarga(treinos, 'Clamshell com Faixa', 15, 0);
+    expect(s?.carga).toBe(0);
+    expect(Number.isNaN(s!.carga)).toBe(false);
   });
 });

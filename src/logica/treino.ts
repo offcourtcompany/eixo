@@ -8,9 +8,34 @@
  * não bateu, repete a carga. Duas repetições seguidas sem bater, desce 10%.
  */
 import type { Treino, GrupoMuscular } from '../tipos';
+import type { Plano } from '../dados/programas';
 
 /** Epley — estimativa de 1RM. Serve para comparar séries de reps diferentes. */
 export const e1rm = (carga: number, reps: number) => carga * (1 + reps / 30);
+
+/**
+ * De qual plano é a última sessão. Você não escolhe o plano num menu de
+ * configuração: ele é o que você vem treinando.
+ */
+export function planoAtivo(treinos: Treino[], planos: Plano[]): Plano {
+  for (const t of treinos) {
+    const p = planos.find((x) => x.sequencia.includes(t.programa) || x.avulsos?.includes(t.programa));
+    if (p) return p;
+  }
+  return planos[0];
+}
+
+/**
+ * Qual treino é a vez. Anda um passo na sequência do plano a partir da última
+ * sessão registrada dele — quem lembra é o app, não você. Sem histórico, começa
+ * pelo primeiro. `treinos` chega ordenado do mais recente para o mais antigo.
+ */
+export function proximoPrograma(treinos: Treino[], plano: Plano): string {
+  const ultimo = treinos.find((t) => plano.sequencia.includes(t.programa));
+  if (!ultimo) return plano.sequencia[0];
+  const i = plano.sequencia.indexOf(ultimo.programa);
+  return plano.sequencia[(i + 1) % plano.sequencia.length];
+}
 
 export function seriesDoExercicio(treinos: Treino[], nome: string) {
   return treinos
@@ -54,6 +79,14 @@ export function sugerirCarga(
   const carga = Math.max(...ultimas.map((s) => s.carga));
   const doPeso = ultimas.filter((s) => s.carga === carga);
   const bateu = doPeso.every((s) => s.reps >= repsAlvo);
+
+  // Peso corporal, faixa elástica, mobilidade: não existe anilha para pendurar.
+  // O que sobe ali é repetição, tempo ou qualidade de execução, não quilo.
+  if (incremento <= 0) {
+    return bateu
+      ? { carga, motivo: `fechou o alvo — some repetição ou tempo, não carga` }
+      : { carga, motivo: 'repita até fechar todas as séries' };
+  }
 
   if (bateu) return { carga: carga + incremento, motivo: `bateu ${repsAlvo} reps em todas as séries` };
 

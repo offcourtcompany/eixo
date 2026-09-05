@@ -13,7 +13,8 @@ import { estadoDoHabito, placarDoDia } from '../logica/habitos';
 import { resumoDoMes } from '../logica/financas';
 import { jurosMensaisDe } from '../logica/dividas';
 import { itensDoDia, separarAfazeres } from '../logica/agenda';
-import { PROGRAMAS } from '../dados/programas';
+import { PLANOS, programaPorId } from '../dados/programas';
+import { planoAtivo, proximoPrograma } from '../logica/treino';
 import { Cartao, TituloSecao, Botao, Barra, Aviso, Legenda, Metrica, Vazio } from '../componentes/ui';
 import { ConviteDeFechamento } from '../componentes/FecharSemana';
 import { BlocoIdeiaDoDia } from '../componentes/Ideias';
@@ -56,7 +57,9 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
   }, [dados.eventos.itens, dados.rotinas.itens, dados.tarefas.itens, data]);
   const coresDeFrente = new Map(dados.frentes.itens.map((f) => [f.id, f.cor]));
   const treinouHoje = dados.treinos.itens.some((t) => t.data === data);
-  const ehDiaDeTreino = [1, 3, 5].includes(diaSemana(data));
+  const planoDeTreino = planoAtivo(dados.treinos.itens, PLANOS);
+  const ehDiaDeTreino = planoDeTreino.diasSemana.includes(diaSemana(data));
+  const proximoTreino = programaPorId(proximoPrograma(dados.treinos.itens, planoDeTreino));
 
   async function alternar(id: string) {
     const marcados = { ...(dia?.habitos || {}) };
@@ -247,9 +250,7 @@ export default function Hoje({ dados, irPara }: { dados: DadosApp; irPara: (d: D
               {treinouHoje ? 'Treino feito' : ehDiaDeTreino ? 'Treino de hoje' : 'Registrar treino'}
             </span>
             <span className="block truncate text-[11px] text-fraco">
-              {treinouHoje ? 'bom trabalho' : 'próximo: ' + (PROGRAMAS.find((p) =>
-                p.id !== dados.treinos.itens.find((t) => t.programa === 'A' || t.programa === 'B')?.programa,
-              )?.nome || 'Treino A')}
+              {treinouHoje ? 'bom trabalho' : 'próximo: ' + (proximoTreino?.nome || 'Treino livre')}
             </span>
           </span>
         </button>

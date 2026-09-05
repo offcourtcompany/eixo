@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, Check, Trophy, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Check, Trophy, ChevronRight, CirclePlay } from 'lucide-react';
 import type { DadosApp } from '../dadosApp';
 import type { Treino as TreinoDoc, ExercicioFeito, GrupoMuscular } from '../tipos';
-import { PROGRAMAS, GRUPOS, type Programa, type ExercicioProgramado } from '../dados/programas';
+import {
+  PLANOS, GRUPOS, UNIDADES, programaPorId,
+  type Programa, type Plano, type ExercicioProgramado,
+} from '../dados/programas';
 import { hoje, somaDias, dataCurta, dataPorExtenso, numero } from '../formato';
-import { ultimaSessao, sugerirCarga, recorde, tonelagem, volumePorGrupo, e1rm } from '../logica/treino';
+import {
+  ultimaSessao, sugerirCarga, recorde, tonelagem, volumePorGrupo, e1rm,
+  planoAtivo, proximoPrograma,
+} from '../logica/treino';
 import {
   Cartao, TituloSecao, Metrica, Botao, Campo, Entrada, Selecao, AreaTexto,
   Folha, Vazio, Legenda, Pilula, Aviso,
@@ -18,11 +24,10 @@ export default function Treino({ dados }: { dados: DadosApp }) {
 
   const sessao = treinos.find((t) => t.id === sessaoId) || null;
 
-  // Alterna A/B a partir do último treino registrado — sem exigir que você lembre.
-  const proximo = useMemo(() => {
-    const ultimo = treinos.find((t) => t.programa === 'A' || t.programa === 'B');
-    return PROGRAMAS.find((p) => p.id !== ultimo?.programa) || PROGRAMAS[0];
-  }, [treinos]);
+  // O plano em curso é o do último treino registrado, e a vez é a próxima na
+  // sequência dele — sem exigir que você lembre em que dia parou.
+  const plano = useMemo(() => planoAtivo(treinos, PLANOS), [treinos]);
+  const proximo = useMemo(() => proximoPrograma(treinos, plano), [treinos, plano]);
 
   async function iniciar(programa: Programa) {
     const id = await dados.treinos.salvar({
@@ -47,23 +52,16 @@ export default function Treino({ dados }: { dados: DadosApp }) {
           de quadra — e a quadra é onde a sua rede de contatos, que gera receita, acontece. Força aqui é
           manutenção de ativo, não estética.
         </Legenda>
-        <div className="mt-4 space-y-2">
-          {PROGRAMAS.map((p) => (
-            <button key={p.id} onClick={() => void iniciar(p)}
-              className={'flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left transition '
-                + (p.id === proximo.id ? 'border-brasa/50' : 'border-borda bg-superficie2')}>
-              <span className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="titulo text-base">{p.nome}</span>
-                  {p.id === proximo.id && <Pilula cor="#EE6018">é a vez dele</Pilula>}
-                </span>
-                <span className="mt-0.5 block truncate text-[12px] text-fraco">{p.foco}</span>
-              </span>
-              <ChevronRight size={18} className="shrink-0 text-suave" />
-            </button>
-          ))}
-        </div>
+        {PLANOS.map((p) => (
+          <ListaDoPlano key={p.id} plano={p} aVez={p.id === plano.id ? proximo : null}
+            aoIniciar={(prog) => void iniciar(prog)} />
+        ))}
       </Cartao>
+
+      {/* As regras do plano valem antes de começar, não depois. Ficam à vista
+          mesmo enquanto o plano ainda não é o que você vem treinando. */}
+      {PLANOS.filter((p) => p.observacoes?.length || p.resultado?.length)
+        .map((p) => <NotasDoPlano key={p.id} plano={p} />)}
 
       <BlocoCarga dados={dados} />
       <PesoCorporal dados={dados} />
@@ -74,14 +72,111 @@ export default function Treino({ dados }: { dados: DadosApp }) {
   );
 }
 
+// ───────────────────────── escolha do treino ─────────────────────────
+
+function ListaDoPlano({
+  plano, aVez, aoIniciar,
+}: { plano: Plano; aVez: string | null; aoIniciar: (p: Programa) => void }) {
+  const daSequencia = plano.sequencia.map(programaPorId).filter((p): p is Programa => !!p);
+  const avulsos = (plano.avulsos || []).map(programaPorId).filter((p): p is Programa => !!p);
+
+  return (
+    <div className="mt-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="titulo text-[13px] uppercase tracking-wider text-suave">{plano.nome}</h3>
+        <span className="shrink-0 text-[11px] text-fraco">{daSequencia.length} dias</span>
+      </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-fraco">{plano.descricao}</p>
+
+      <div className="mt-3 space-y-2">
+        {daSequencia.map((p) => <BotaoPrograma key={p.id} programa={p} aVez={p.id === aVez} aoIniciar={aoIniciar} />)}
+      </div>
+
+      {avulsos.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {avulsos.map((p) => <BotaoPrograma key={p.id} programa={p} aVez={false} aoIniciar={aoIniciar} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BotaoPrograma({
+  programa, aVez, aoIniciar,
+}: { programa: Programa; aVez: boolean; aoIniciar: (p: Programa) => void }) {
+  return (
+    <button onClick={() => aoIniciar(programa)}
+      className={'flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left transition '
+        + (aVez ? 'border-brasa/50' : 'border-borda bg-superficie2')}>
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="titulo text-base">{programa.nome}</span>
+          {programa.dia && <span className="text-[11px] text-fraco">{programa.dia}</span>}
+          {aVez && <Pilula cor="#EE6018">é a vez dele</Pilula>}
+        </span>
+        <span className="mt-0.5 block truncate text-[12px] text-fraco">
+          {programa.foco} · {programa.exercicios.length} exercícios
+        </span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-suave" />
+    </button>
+  );
+}
+
+function NotasDoPlano({ plano }: { plano: Plano }) {
+  if (!plano.observacoes?.length && !plano.resultado?.length) return null;
+  return (
+    <Cartao>
+      <TituloSecao>{plano.nome}</TituloSecao>
+      {plano.observacoes && (
+        <ul className="space-y-2">
+          {plano.observacoes.map((o) => (
+            <li key={o} className="flex gap-2.5 text-[12px] leading-relaxed text-suave">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brasa" />
+              <span>{o}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {plano.resultado && (
+        <>
+          <div className="mt-4 text-[10px] font-medium uppercase tracking-wider text-fraco">
+            O que se espera em 6 a 8 semanas
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {plano.resultado.map((r) => <Pilula key={r}>{r}</Pilula>)}
+          </div>
+          <Legenda>
+            Só vale como resultado o que aparece no histórico: dor que sumiu, carga que subiu, jogo que
+            terminou inteiro. Sensação de semana boa não conta.
+          </Legenda>
+        </>
+      )}
+    </Cartao>
+  );
+}
+
 // ─────────────────────── sessão em andamento ───────────────────────
 
 function SessaoAberta({
   dados, sessao, aoFechar,
 }: { dados: DadosApp; sessao: TreinoDoc; aoFechar: () => void }) {
-  const programa = PROGRAMAS.find((p) => p.id === sessao.programa);
+  const programa = programaPorId(sessao.programa);
   const outros = dados.treinos.itens.filter((t) => t.id !== sessao.id);
   const [livre, setLivre] = useState(false);
+
+  // Os dias longos vêm divididos em blocos (ativação, principais, potência).
+  // A ordem importa: ativar glúteo depois de agachar não ativa nada.
+  const blocos = useMemo(() => {
+    const ordem: string[] = [];
+    const mapa = new Map<string, ExercicioProgramado[]>();
+    for (const ex of programa?.exercicios || []) {
+      const b = ex.bloco || '';
+      if (!mapa.has(b)) { mapa.set(b, []); ordem.push(b); }
+      mapa.get(b)!.push(ex);
+    }
+    return ordem.map((nome) => ({ nome, exercicios: mapa.get(nome)! }));
+  }, [programa]);
 
   async function atualizar(exercicios: ExercicioFeito[]) {
     await dados.treinos.salvar({ id: sessao.id, exercicios });
@@ -127,9 +222,20 @@ function SessaoAberta({
         </div>
       </Cartao>
 
-      {programa?.exercicios.map((ex) => (
-        <BlocoExercicio key={ex.nome} ex={ex} sessao={sessao} historico={outros}
-          aoRegistrar={registrarSerie} aoRemover={removerSerie} />
+      {blocos.map((b) => (
+        <div key={b.nome || 'unico'} className="space-y-6">
+          {b.nome && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brasa" />
+              <span className="text-[11px] font-medium uppercase tracking-wider text-suave">{b.nome}</span>
+              <span className="h-px flex-1 bg-borda" />
+            </div>
+          )}
+          {b.exercicios.map((ex) => (
+            <BlocoExercicio key={ex.nome} ex={ex} sessao={sessao} historico={outros}
+              aoRegistrar={registrarSerie} aoRemover={removerSerie} />
+          ))}
+        </div>
       ))}
 
       {sessao.exercicios.filter((e) => !programa?.exercicios.some((p) => p.nome === e.nome)).map((e) => (
@@ -196,20 +302,39 @@ function BlocoExercicio({
   }
 
   const completo = series.length >= ex.series;
+  const unidade = UNIDADES[ex.unidade || 'reps'];
+  // Mobilidade é tempo, não carga: mostrar campo de peso ali só atrapalha.
+  const soTempo = ex.unidade === 'min';
+  // Peso corporal e faixa não têm quilo para mostrar — só o que foi feito.
+  const textoDaSerie = (s: { carga: number; reps: number }) =>
+    (s.carga > 0 ? s.carga + ' kg × ' + s.reps : String(s.reps))
+    + (ex.unidade && ex.unidade !== 'reps' ? ' ' + unidade.longo : '');
 
   return (
     <Cartao className={completo ? 'border-verde/30' : ''}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="titulo text-base">{ex.nome}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="titulo text-base">{ex.nome}</h3>
+            {ex.essencial && <Pilula cor="#EE6018">essencial</Pilula>}
+          </div>
           <p className="text-[11px] text-fraco">
-            {ex.series} séries × {ex.repsAlvo} {ex.grupo === 'core' ? 'segundos' : 'reps'}
+            {ex.series} {ex.series === 1 ? 'série' : 'séries'} × {ex.repsAlvo}{' '}
+            {ex.repsAlvo === 1 ? unidade.singular : unidade.longo}
+            {ex.porLado ? ' cada lado' : ''}
           </p>
         </div>
         <span className="tabular shrink-0 text-[12px] text-suave">{series.length}/{ex.series}</span>
       </div>
 
       {ex.nota && <p className="mt-2 text-[11px] leading-relaxed text-fraco">{ex.nota}</p>}
+
+      {ex.video && (
+        <a href={ex.video} target="_blank" rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-suave hover:text-creme">
+          <CirclePlay size={13} />Ver execução
+        </a>
+      )}
 
       {anterior && (
         <div className="mt-3 rounded-xl bg-superficie2 px-3 py-2.5">
@@ -218,14 +343,14 @@ function BlocoExercicio({
           </div>
           <div className="tabular mt-1 text-[13px] text-suave">
             {anterior.series.map((s, i) => (
-              <span key={i}>{i > 0 ? ' · ' : ''}{s.carga}kg × {s.reps}</span>
+              <span key={i}>{i > 0 ? ' · ' : ''}{textoDaSerie(s)}</span>
             ))}
           </div>
           {sugestao && (
             <div className="mt-2 border-t border-borda2 pt-2 text-[12px]">
               <span className="text-fraco">Hoje: </span>
-              <span className="tabular text-brasa">{sugestao.carga} kg</span>
-              <span className="text-fraco"> — {sugestao.motivo}</span>
+              {sugestao.carga > 0 && <span className="tabular text-brasa">{sugestao.carga} kg — </span>}
+              <span className="text-fraco">{sugestao.motivo}</span>
             </div>
           )}
         </div>
@@ -237,7 +362,7 @@ function BlocoExercicio({
             <div key={i} className="flex items-center gap-3 rounded-lg bg-superficie2 px-3 py-2">
               <span className="w-5 text-[11px] text-fraco">{i + 1}</span>
               <span className="tabular flex-1 text-sm">
-                {s.carga} kg × {s.reps}
+                {textoDaSerie(s)}
                 {s.rir !== undefined && <span className="text-fraco"> · RIR {s.rir}</span>}
               </span>
               {s.reps >= ex.repsAlvo && <Pilula cor="#A0CA92">alvo</Pilula>}
@@ -249,19 +374,23 @@ function BlocoExercicio({
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
-        <Campo rotulo="Carga">
-          <Entrada type="number" inputMode="decimal" step="0.5" value={cargaEfetiva}
-            onChange={(e) => setCarga(e.target.value)} placeholder="0" />
-        </Campo>
-        <Campo rotulo={ex.grupo === 'core' ? 'Seg.' : 'Reps'}>
+      <div className={'mt-3 grid gap-2 ' + (soTempo ? 'grid-cols-[1fr_auto]' : 'grid-cols-[1fr_1fr_1fr_auto]')}>
+        {!soTempo && (
+          <Campo rotulo="Carga">
+            <Entrada type="number" inputMode="decimal" step="0.5" value={cargaEfetiva}
+              onChange={(e) => setCarga(e.target.value)} placeholder="0" />
+          </Campo>
+        )}
+        <Campo rotulo={unidade.curto}>
           <Entrada type="number" inputMode="numeric" value={reps}
             onChange={(e) => setReps(e.target.value)} placeholder={String(ex.repsAlvo)} />
         </Campo>
-        <Campo rotulo="RIR">
-          <Entrada type="number" inputMode="numeric" value={rir}
-            onChange={(e) => setRir(e.target.value)} placeholder="2" />
-        </Campo>
+        {!soTempo && (
+          <Campo rotulo="RIR">
+            <Entrada type="number" inputMode="numeric" value={rir}
+              onChange={(e) => setRir(e.target.value)} placeholder="2" />
+          </Campo>
+        )}
         <div className="flex items-end">
           <Botao variante="primario" onClick={adicionar} disabled={!Number(reps)}><Plus size={16} /></Botao>
         </div>
@@ -450,7 +579,7 @@ function Historico({ treinos, aoAbrir }: { treinos: TreinoDoc[]; aoAbrir: (id: s
             className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-superficie2">
             <span className="w-11 shrink-0 text-[11px] text-fraco">{dataCurta(t.data)}</span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm">Treino {t.programa}</span>
+              <span className="block text-sm">{programaPorId(t.programa)?.nome || 'Treino livre'}</span>
               <span className="block truncate text-[11px] text-fraco">
                 {t.exercicios.length} exercícios · {t.exercicios.reduce((s, e) => s + e.series.length, 0)} séries
               </span>
